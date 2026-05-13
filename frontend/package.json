@@ -1,0 +1,21 @@
+{
+  "name": "rms",
+  "version": "1.0.0",
+  "description": "> A web-based platform that digitalises and streamlines the patient referral process across all five tiers of Tanzania's public healthcare system.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Machojr/RMS.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Machojr/RMS/issues"
+  },
+  "homepage": "https://github.com/Machojr/RMS#readme"
+}

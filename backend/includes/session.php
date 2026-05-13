@@ -1,0 +1,109 @@
+<?php
+// ===========================================
+// Session Management & Authentication Helper
+// Handles user sessions and role-based access control
+// ===========================================
+
+// Start session if not already started
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+/**
+ * Check if user is logged in
+ */
+function isLoggedIn() {
+    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+}
+
+/**
+ * Get current user data from session
+ */
+function getCurrentUser() {
+    if (!isLoggedIn()) {
+        return null;
+    }
+
+    return [
+        'id' => $_SESSION['user_id'],
+        'email' => $_SESSION['user_email'],
+        'role' => $_SESSION['user_role'],
+        'first_name' => $_SESSION['user_first_name'],
+        'last_name' => $_SESSION['user_last_name'],
+        'facility_id' => $_SESSION['user_facility_id']
+    ];
+}
+
+/**
+ * Check if user has specific role
+ */
+function hasRole($required_role) {
+    $user = getCurrentUser();
+    return $user && $user['role'] === $required_role;
+}
+
+/**
+ * Check if user can access specific resource
+ */
+function canAccessReferral($referral_id, $conn) {
+    $user = getCurrentUser();
+    if (!$user) return false;
+
+    // COs can access their own referrals
+    if ($user['role'] === 'co') {
+        $stmt = $conn->prepare("SELECT id FROM referrals WHERE id = ? AND referring_co_id = ?");
+        $stmt->bind_param("ii", $referral_id, $user['id']);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->num_rows > 0;
+    }
+
+    // Admins can access referrals for their facility
+    if ($user['role'] === 'admin') {
+        $stmt = $conn->prepare("
+            SELECT r.id FROM referrals r
+            JOIN users u ON r.referring_co_id = u.id
+            WHERE r.id = ? AND u.facility_id = ?
+        ");
+        $stmt->bind_param("ii", $referral_id, $user['facility_id']);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->num_rows > 0;
+    }
+
+    // MOH can access all referrals
+    return $user['role'] === 'moh';
+}
+
+/**
+ * Send JSON response
+ */
+function sendResponse($data, $status_code = 200) {
+    http_response_code($status_code);
+    echo json_encode($data);
+    exit();
+}
+
+/**
+ * Send error response
+ */
+function sendError($message, $status_code = 400) {
+    sendResponse(['error' => $message], $status_code);
+}
+
+/**
+ * Validate required fields in request
+ */
+function validateRequired($data, $required_fields) {
+    $missing = [];
+    foreach ($required_fields as $field) {
+        if (!isset($data[$field]) || empty($data[$field])) {
+            $missing[] = $field;
+        }
+    }
+
+    if (!empty($missing)) {
+        sendError('Missing required fields: ' . implode(', ', $missing));
+    }
+}
+?>

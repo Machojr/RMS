@@ -1,0 +1,81 @@
+<?php
+// ===========================================
+// RMS API Entry Point
+// Handles all API requests and routes them to appropriate modules
+// ===========================================
+
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: http://localhost:3000'); // React dev server
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+// Handle preflight OPTIONS requests
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+// Include database configuration
+require_once __DIR__ . '/config/db.php';
+
+// Get the request method and path
+$request_method = $_SERVER['REQUEST_METHOD'];
+$request_uri = $_SERVER['REQUEST_URI'];
+
+// Remove query parameters from URI
+$path = parse_url($request_uri, PHP_URL_PATH);
+
+// Remove the base path (/rms/backend or /rms/backend/index.php)
+$path = preg_replace('#^/rms/backend(/index\.php)?#', '', $path);
+
+// Split path into segments
+$path_segments = explode('/', trim($path, '/'));
+
+// Default root response
+if (empty($path_segments[0])) {
+    echo json_encode(['message' => 'RMS backend API is active', 'endpoints' => ['POST /auth/login', 'POST /auth/logout', 'GET /facilities/manage_facilities']]);
+    exit();
+}
+
+// Remove optional .php extension on the action segment
+if (isset($path_segments[1])) {
+    $path_segments[1] = preg_replace('/\.php$/', '', $path_segments[1]);
+}
+
+// Route the request
+try {
+    switch ($path_segments[0]) {
+        case 'auth':
+            require_once __DIR__ . '/modules/auth/' . $path_segments[1] . '.php';
+            break;
+
+        case 'referrals':
+            require_once __DIR__ . '/modules/referrals/' . $path_segments[1] . '.php';
+            break;
+
+        case 'feedback':
+            require_once __DIR__ . '/modules/feedback/' . $path_segments[1] . '.php';
+            break;
+
+        case 'notifications':
+            require_once __DIR__ . '/modules/notifications/' . $path_segments[1] . '.php';
+            break;
+
+        case 'dashboard':
+            require_once __DIR__ . '/modules/dashboard/' . $path_segments[1] . '.php';
+            break;
+
+        case 'facilities':
+            require_once __DIR__ . '/modules/facilities/' . $path_segments[1] . '.php';
+            break;
+
+        default:
+            http_response_code(404);
+            echo json_encode(['error' => 'API endpoint not found']);
+            break;
+    }
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Internal server error', 'message' => $e->getMessage()]);
+}
+?>
