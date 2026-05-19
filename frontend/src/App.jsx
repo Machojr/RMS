@@ -1,6 +1,7 @@
 import React from 'react';
 import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
+import DashboardLanding from './pages/DashboardLanding.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 
 function App() {
@@ -10,7 +11,11 @@ function App() {
     return <Login />;
   }
 
-  if (path === '/dashboard') {
+  if (path === '/dashboard-landing') {
+    return <DashboardLanding />;
+  }
+
+  if (path === '/dashboard' || path === '/referrals' || path === '/facilities' || path === '/feedback' || path === '/notifications') {
     return <Dashboard />;
   }
 

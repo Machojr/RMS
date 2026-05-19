@@ -25,7 +25,7 @@ export default function Login() {
 
       if (response.ok && data.success) {
         setMessage('Login successful. Redirecting...');
-        window.location.href = '/dashboard';
+        window.location.href = '/dashboard-landing';
       } else {
         setMessage(data.message || 'Login failed. Please try again.');
       }

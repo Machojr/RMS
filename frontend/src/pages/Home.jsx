@@ -29,6 +29,21 @@ const howItWorks = [
   'Clinical feedback is sent back to the referring CO automatically.',
 ];
 
+const roles = [
+  {
+    title: 'CO',
+    description: 'Submit patient referrals, follow referral status, and receive clinical outcomes from receiving facilities.',
+  },
+  {
+    title: 'Hospital Admin',
+    description: 'Oversee facility referrals, accept transfers, and manage clinical feedback for your facility.',
+  },
+  {
+    title: 'MOH Official',
+    description: 'Monitor national referral performance, facility coverage, and health system outcomes.',
+  },
+];
+
 export default function Home() {
   return (
     <div>
@@ -67,6 +82,22 @@ export default function Home() {
               <div key={item} className="card">
                 <div className="stat-number">0{index + 1}</div>
                 <h3>{item}</h3>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="roles" className="section">
+          <div className="section-title">
+            <span>Defined Roles</span>
+            <h2>Each user has a clear, purpose-built role in the referral flow.</h2>
+          </div>
+
+          <div className="role-grid" style={{ marginTop: '2rem' }}>
+            {roles.map((role) => (
+              <div key={role.title} className="card role-card">
+                <h3>{role.title}</h3>
+                <p>{role.description}</p>
               </div>
             ))}
           </div>
