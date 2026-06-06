@@ -15,7 +15,7 @@ function App() {
     return <DashboardLanding />;
   }
 
-  if (path === '/dashboard' || path === '/referrals' || path === '/facilities' || path === '/feedback' || path === '/notifications') {
+  if (path === '/dashboard') {
     return <Dashboard />;
   }
 

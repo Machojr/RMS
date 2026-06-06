@@ -14,7 +14,7 @@ export default function DashboardNav({ activeTab, onChange }) {
       {tabs.map((tab) => (
         <a
           key={tab.id}
-          href={`#${tab.id}`}
+          href={`/dashboard?tab=${tab.id}`}
           className={activeTab === tab.id ? 'active' : ''}
           onClick={(event) => {
             event.preventDefault();
