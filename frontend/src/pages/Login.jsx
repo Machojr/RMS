@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiUrl } from '../config/api.js';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -12,7 +13,7 @@ export default function Login() {
     setMessage('');
 
     try {
-      const response = await fetch('http://localhost/rms/backend/auth/login.php', {
+      const response = await fetch(apiUrl('/auth/login.php'), {
         method: 'POST',
         credentials: 'include',
         headers: {

@@ -37,8 +37,13 @@ $request_uri = $_SERVER['REQUEST_URI'];
 // Remove query parameters from URI
 $path = parse_url($request_uri, PHP_URL_PATH);
 
-// Remove the base path (/rms/backend or /rms/backend/index.php)
-$path = preg_replace('#^/rms/backend(/index\.php)?#', '', $path);
+// Remove any local install path before /backend so the API works from
+// /rms/backend, /temp/RMS/backend, or another XAMPP subfolder.
+$backendPosition = stripos($path, '/backend');
+if ($backendPosition !== false) {
+    $path = substr($path, $backendPosition + strlen('/backend'));
+}
+$path = preg_replace('#^/index\.php#i', '', $path);
 
 // Split path into segments
 $path_segments = explode('/', trim($path, '/'));
@@ -79,6 +84,10 @@ try {
 
         case 'facilities':
             require_once __DIR__ . '/modules/facilities/' . $path_segments[1] . '.php';
+            break;
+
+        case 'patients':
+            require_once __DIR__ . '/modules/patients/' . $path_segments[1] . '.php';
             break;
 
         default:

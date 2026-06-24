@@ -23,6 +23,7 @@ $query = "
         r.status,
         r.urgency,
         r.clinical_reason,
+        r.clinical_findings,
         r.requested_services,
         r.created_at,
         p.first_name AS patient_first_name,

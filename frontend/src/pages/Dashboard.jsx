@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import DashboardNav from '../components/DashboardNav.jsx';
+import { apiUrl } from '../config/api.js';
 
 const sectionMeta = {
   overview: {
@@ -9,6 +10,10 @@ const sectionMeta = {
   referrals: {
     title: 'Referral Management',
     subtitle: 'Track every referral from submission to closure.',
+  },
+  patients: {
+    title: 'Patient Management',
+    subtitle: 'View patient profiles linked to referral activity.',
   },
   facilities: {
     title: 'Facilities Network',
@@ -31,6 +36,7 @@ export default function Dashboard() {
   const [loadingState, setLoadingState] = useState({
     overview: false,
     referrals: false,
+    patients: false,
     facilities: false,
     feedback: false,
     notifications: false,
@@ -38,11 +44,13 @@ export default function Dashboard() {
   const [sectionErrors, setSectionErrors] = useState({
     overview: '',
     referrals: '',
+    patients: '',
     facilities: '',
     feedback: '',
     notifications: '',
   });
   const [referrals, setReferrals] = useState([]);
+  const [patients, setPatients] = useState([]);
   const [facilities, setFacilities] = useState([]);
   const [feedbackItems, setFeedbackItems] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -74,6 +82,7 @@ export default function Dashboard() {
   });
   const [referralMessage, setReferralMessage] = useState('');
   const [submittingReferral, setSubmittingReferral] = useState(false);
+  const [selectedReferral, setSelectedReferral] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -84,11 +93,26 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    if (!selectedReferral) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setSelectedReferral(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedReferral]);
+
+  useEffect(() => {
     async function fetchSummary() {
       setSectionErrors((prev) => ({ ...prev, overview: '' }));
       setLoadingState((prev) => ({ ...prev, overview: true }));
       try {
-        const response = await fetch('http://localhost/rms/backend/dashboard/summary.php', {
+        const response = await fetch(apiUrl('/dashboard/summary.php'), {
           method: 'GET',
           credentials: 'include',
         });
@@ -121,7 +145,7 @@ export default function Dashboard() {
       setSectionErrors((prev) => ({ ...prev, referrals: '' }));
       setLoadingState((prev) => ({ ...prev, referrals: true }));
       try {
-        const response = await fetch('http://localhost/rms/backend/referrals/list.php', {
+        const response = await fetch(apiUrl('/referrals/list.php'), {
           method: 'GET',
           credentials: 'include',
         });
@@ -148,7 +172,7 @@ export default function Dashboard() {
       setSectionErrors((prev) => ({ ...prev, facilities: '' }));
       setLoadingState((prev) => ({ ...prev, facilities: true }));
       try {
-        const response = await fetch('http://localhost/rms/backend/facilities/manage_facilities.php', {
+        const response = await fetch(apiUrl('/facilities/manage_facilities.php'), {
           method: 'GET',
           credentials: 'include',
         });
@@ -171,11 +195,38 @@ export default function Dashboard() {
       }
     }
 
+    async function fetchPatients() {
+      setSectionErrors((prev) => ({ ...prev, patients: '' }));
+      setLoadingState((prev) => ({ ...prev, patients: true }));
+      try {
+        const response = await fetch(apiUrl('/patients/list.php'), {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setPatients(data.patients);
+        } else {
+          setSectionErrors((prev) => ({
+            ...prev,
+            patients: data.error || 'Unable to load patients.',
+          }));
+        }
+      } catch (err) {
+        setSectionErrors((prev) => ({
+          ...prev,
+          patients: 'Unable to reach patient service.',
+        }));
+      } finally {
+        setLoadingState((prev) => ({ ...prev, patients: false }));
+      }
+    }
+
     async function fetchFeedback() {
       setSectionErrors((prev) => ({ ...prev, feedback: '' }));
       setLoadingState((prev) => ({ ...prev, feedback: true }));
       try {
-        const response = await fetch('http://localhost/rms/backend/feedback/list.php', {
+        const response = await fetch(apiUrl('/feedback/list.php'), {
           method: 'GET',
           credentials: 'include',
         });
@@ -202,7 +253,7 @@ export default function Dashboard() {
       setSectionErrors((prev) => ({ ...prev, notifications: '' }));
       setLoadingState((prev) => ({ ...prev, notifications: true }));
       try {
-        const response = await fetch('http://localhost/rms/backend/notifications/list.php', {
+        const response = await fetch(apiUrl('/notifications/list.php'), {
           method: 'GET',
           credentials: 'include',
         });
@@ -229,6 +280,10 @@ export default function Dashboard() {
       fetchReferrals();
     }
 
+    if (activeTab === 'patients' && patients.length === 0) {
+      fetchPatients();
+    }
+
     if (activeTab === 'facilities' && facilities.length === 0) {
       fetchFacilities();
     }
@@ -248,7 +303,7 @@ export default function Dashboard() {
     if (activeTab === 'notifications' && notifications.length === 0) {
       fetchNotifications();
     }
-  }, [activeTab, referrals.length, facilities.length, feedbackItems.length, notifications.length]);
+  }, [activeTab, referrals.length, patients.length, facilities.length, feedbackItems.length, notifications.length]);
   
   const submitReferral = async (event) => {
     event.preventDefault();
@@ -256,7 +311,7 @@ export default function Dashboard() {
     setReferralMessage('');
 
     try {
-      const response = await fetch('http://localhost/rms/backend/referrals/create.php', {
+      const response = await fetch(apiUrl('/referrals/create.php'), {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -298,7 +353,7 @@ export default function Dashboard() {
     setActionProcessing(referralId);
     setActionError('');
     try {
-      const response = await fetch('http://localhost/rms/backend/referrals/update_status.php', {
+      const response = await fetch(apiUrl('/referrals/update_status.php'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -322,7 +377,7 @@ export default function Dashboard() {
     setFeedbackMessage('');
 
     try {
-      const response = await fetch('http://localhost/rms/backend/feedback/create.php', {
+      const response = await fetch(apiUrl('/feedback/create.php'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -365,7 +420,7 @@ export default function Dashboard() {
 
   const signOut = async (event) => {
     event.preventDefault();
-    await fetch('http://localhost/rms/backend/auth/logout.php', {
+    await fetch(apiUrl('/auth/logout.php'), {
       method: 'POST',
       credentials: 'include',
     });
@@ -534,12 +589,22 @@ export default function Dashboard() {
                         </select>
                       </div>
                       <div className="form-field">
-                        <span>Clinical reason</span>
+                        <span>Patient condition / clinical reason</span>
                         <textarea
                           name="clinical_reason"
                           value={referralForm.clinical_reason}
                           onChange={(e) => setReferralForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))}
                           required
+                          className="form-input"
+                          rows="3"
+                        />
+                      </div>
+                      <div className="form-field">
+                        <span>Clinical findings</span>
+                        <textarea
+                          name="clinical_findings"
+                          value={referralForm.clinical_findings}
+                          onChange={(e) => setReferralForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))}
                           className="form-input"
                           rows="3"
                         />
@@ -575,6 +640,7 @@ export default function Dashboard() {
                       <tr>
                         <th>ID</th>
                         <th>Patient</th>
+                        <th>Condition</th>
                         <th>Urgency</th>
                         <th>Status</th>
                         <th>From / To</th>
@@ -587,6 +653,17 @@ export default function Dashboard() {
                         <tr key={item.id}>
                           <td>{item.id}</td>
                           <td>{item.patient_name}</td>
+                          <td className="referral-summary-cell">
+                            <p>{item.clinical_reason || 'No condition details recorded.'}</p>
+                            <button
+                              type="button"
+                              className="table-icon-button"
+                              onClick={() => setSelectedReferral(item)}
+                            >
+                              <i className="fa-solid fa-eye" aria-hidden="true"></i>
+                              View details
+                            </button>
+                          </td>
                           <td>{item.urgency}</td>
                           <td className={`status-pill status-${item.status}`}>
                             {item.status}
@@ -624,6 +701,58 @@ export default function Dashboard() {
                 )}
               </div>
             </>
+          )
+        )}
+
+        {activeTab === 'patients' && (
+          loadingState.patients ? (
+            <p className="dashboard-message">Loading patients...</p>
+          ) : sectionErrors.patients ? (
+            <p className="dashboard-message dashboard-error">{sectionErrors.patients}</p>
+          ) : (
+            <div className="table-card">
+              {patients.length === 0 ? (
+                <p>No patient records available yet.</p>
+              ) : (
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Patient</th>
+                      <th>Gender</th>
+                      <th>Date of Birth</th>
+                      <th>Phone</th>
+                      <th>Referrals</th>
+                      <th>Last Referral</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {patients.map((patient) => (
+                      <tr key={patient.id}>
+                        <td>{patient.id}</td>
+                        <td>
+                          <strong>{patient.patient_name}</strong>
+                          {patient.national_id && (
+                            <span style={{ display: 'block', color: '#64748b', fontSize: '0.9rem' }}>
+                              ID: {patient.national_id}
+                            </span>
+                          )}
+                        </td>
+                        <td>{patient.gender || 'Not set'}</td>
+                        <td>{patient.date_of_birth || 'Not set'}</td>
+                        <td>{patient.phone || 'Not set'}</td>
+                        <td>{patient.referral_count}</td>
+                        <td>
+                          {patient.last_referral_at
+                            ? new Date(patient.last_referral_at).toLocaleDateString()
+                            : 'No referral'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           )
         )}
 

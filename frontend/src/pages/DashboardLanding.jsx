@@ -1,22 +1,26 @@
 import React, { useEffect, useState } from 'react';
+import { apiUrl } from '../config/api.js';
 
 const modulesAvailable = {
   co: [
-    { title: 'My Referrals', desc: 'View and manage your referred patients', path: '/dashboard?tab=referrals', icon: '📋' },
-    { title: 'Facilities', desc: 'Browse all facilities in the network', path: '/dashboard?tab=facilities', icon: '🏥' },
-    { title: 'Feedback', desc: 'Clinical outcomes from receiving centers', path: '/dashboard?tab=feedback', icon: '📝' },
+    { title: 'My Referrals', desc: 'View and manage your referred patients', path: '/dashboard?tab=referrals', iconClass: 'fa-solid fa-file-medical' },
+    { title: 'Patients', desc: 'Review patient profiles linked to your referrals', path: '/dashboard?tab=patients', iconClass: 'fa-solid fa-user-injured' },
+    { title: 'Facilities', desc: 'Browse all facilities in the network', path: '/dashboard?tab=facilities', iconClass: 'fa-solid fa-hospital' },
+    { title: 'Feedback', desc: 'Clinical outcomes from receiving centers', path: '/dashboard?tab=feedback', iconClass: 'fa-solid fa-notes-medical' },
   ],
   admin: [
-    { title: 'Referrals', desc: 'Manage all facility referrals', path: '/dashboard?tab=referrals', icon: '📋' },
-    { title: 'Facilities', desc: 'Facility network overview', path: '/dashboard?tab=facilities', icon: '🏥' },
-    { title: 'Feedback', desc: 'Monitor clinical feedback', path: '/dashboard?tab=feedback', icon: '📝' },
-    { title: 'Notifications', desc: 'Communication audit logs', path: '/dashboard?tab=notifications', icon: '📢' },
+    { title: 'Referrals', desc: 'Manage all facility referrals', path: '/dashboard?tab=referrals', iconClass: 'fa-solid fa-file-medical' },
+    { title: 'Patients', desc: 'Review patient records connected to your facility', path: '/dashboard?tab=patients', iconClass: 'fa-solid fa-user-injured' },
+    { title: 'Facilities', desc: 'Facility network overview', path: '/dashboard?tab=facilities', iconClass: 'fa-solid fa-hospital' },
+    { title: 'Feedback', desc: 'Monitor clinical feedback', path: '/dashboard?tab=feedback', iconClass: 'fa-solid fa-notes-medical' },
+    { title: 'Notifications', desc: 'Communication audit logs', path: '/dashboard?tab=notifications', iconClass: 'fa-solid fa-bell' },
   ],
   moh: [
-    { title: 'Referrals', desc: 'National referral oversight', path: '/dashboard?tab=referrals', icon: '📋' },
-    { title: 'Facilities', desc: 'All-nation facility data', path: '/dashboard?tab=facilities', icon: '🏥' },
-    { title: 'Feedback', desc: 'Aggregate clinical outcomes', path: '/dashboard?tab=feedback', icon: '📝' },
-    { title: 'Notifications', desc: 'System-wide communications', path: '/dashboard?tab=notifications', icon: '📢' },
+    { title: 'Referrals', desc: 'National referral oversight', path: '/dashboard?tab=referrals', iconClass: 'fa-solid fa-file-medical' },
+    { title: 'Patients', desc: 'View patient records across referral activity', path: '/dashboard?tab=patients', iconClass: 'fa-solid fa-user-injured' },
+    { title: 'Facilities', desc: 'All-nation facility data', path: '/dashboard?tab=facilities', iconClass: 'fa-solid fa-hospital' },
+    { title: 'Feedback', desc: 'Aggregate clinical outcomes', path: '/dashboard?tab=feedback', iconClass: 'fa-solid fa-notes-medical' },
+    { title: 'Notifications', desc: 'System-wide communications', path: '/dashboard?tab=notifications', iconClass: 'fa-solid fa-bell' },
   ],
 };
 
@@ -39,7 +43,7 @@ export default function DashboardLanding() {
   useEffect(() => {
     async function fetchUser() {
       try {
-        const response = await fetch('http://localhost/rms/backend/dashboard/summary.php', {
+        const response = await fetch(apiUrl('/dashboard/summary.php'), {
           method: 'GET',
           credentials: 'include',
         });
@@ -77,7 +81,7 @@ export default function DashboardLanding() {
           </div>
           <a href="/login" className="button-secondary" onClick={(e) => {
             e.preventDefault();
-            fetch('http://localhost/rms/backend/auth/logout.php', {
+            fetch(apiUrl('/auth/logout.php'), {
               method: 'POST',
               credentials: 'include',
             }).then(() => {
@@ -89,10 +93,14 @@ export default function DashboardLanding() {
         <div className="modules-grid">
           {modules.map((module) => (
             <a key={module.path} href={module.path} className="module-card">
-              <span className="module-icon">{module.icon}</span>
+              <span className="module-icon" aria-hidden="true">
+                <i className={module.iconClass}></i>
+              </span>
               <h3>{module.title}</h3>
               <p>{module.desc}</p>
-              <span className="arrow">→</span>
+              <span className="arrow" aria-hidden="true">
+                <i className="fa-solid fa-arrow-right"></i>
+              </span>
             </a>
           ))}
         </div>
