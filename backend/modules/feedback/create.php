@@ -24,6 +24,11 @@ if (!$input) {
 validateRequired($input, ['referral_id', 'clinical_outcome']);
 
 $referralId = (int)$input['referral_id'];
+$department = trim($input['department'] ?? '');
+$referralSerialNo = trim($input['referral_serial_no'] ?? '');
+$referralDiagnosis = trim($input['referral_diagnosis'] ?? '');
+$confirmedDiagnosis = trim($input['confirmed_diagnosis'] ?? '');
+$comments = trim($input['comments'] ?? '');
 $clinicalOutcome = trim($input['clinical_outcome']);
 $treatmentGiven = trim($input['treatment_given'] ?? '');
 $dischargeSummary = trim($input['discharge_summary'] ?? '');
@@ -47,15 +52,23 @@ if ($user['role'] === 'admin') {
 }
 
 $stmt = $conn->prepare(
-    'INSERT INTO feedback (referral_id, sent_by_admin_id, clinical_outcome, treatment_given, discharge_summary, follow_up_instructions) VALUES (?, ?, ?, ?, ?, ?)'
+    'INSERT INTO feedback (
+        referral_id, sent_by_admin_id, department, referral_serial_no, referral_diagnosis,
+        confirmed_diagnosis, comments, clinical_outcome, treatment_given, discharge_summary, follow_up_instructions
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 if (!$stmt) {
     sendError('Database error preparing statement', 500);
 }
 $stmt->bind_param(
-    'iissss',
+    'iisssssssss',
     $referralId,
     $user['id'],
+    $department,
+    $referralSerialNo,
+    $referralDiagnosis,
+    $confirmedDiagnosis,
+    $comments,
     $clinicalOutcome,
     $treatmentGiven,
     $dischargeSummary,

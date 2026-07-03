@@ -42,8 +42,32 @@ $dateOfBirth = !empty($input['date_of_birth']) ? trim($input['date_of_birth']) :
 $phone = !empty($input['phone']) ? trim($input['phone']) : null;
 $address = !empty($input['address']) ? trim($input['address']) : null;
 $nationalId = !empty($input['national_id']) ? trim($input['national_id']) : null;
+$patientNumber = !empty($input['patient_number']) ? trim($input['patient_number']) : null;
+$ageYears = !empty($input['age_years']) ? trim($input['age_years']) : null;
 $receivingFacilityId = (int) $input['receiving_facility_id'];
+$region = !empty($input['region']) ? trim($input['region']) : null;
+$district = !empty($input['district']) ? trim($input['district']) : null;
+$transferDate = !empty($input['transfer_date']) ? trim($input['transfer_date']) : null;
+$referralNumber = !empty($input['referral_number']) ? trim($input['referral_number']) : null;
 $urgency = trim($input['urgency']);
+$diagnosis = !empty($input['diagnosis']) ? trim($input['diagnosis']) : null;
+$temperature = !empty($input['temperature']) ? trim($input['temperature']) : null;
+$heartRate = !empty($input['heart_rate']) ? trim($input['heart_rate']) : null;
+$respiratoryRate = !empty($input['respiratory_rate']) ? trim($input['respiratory_rate']) : null;
+$bloodPressure = !empty($input['blood_pressure']) ? trim($input['blood_pressure']) : null;
+$mentalStatus = !empty($input['mental_status']) ? trim($input['mental_status']) : null;
+$alertStatus = !empty($input['alert_status']) ? trim($input['alert_status']) : null;
+$patientHistory = !empty($input['patient_history']) ? trim($input['patient_history']) : null;
+$chronicMedications = !empty($input['chronic_medications']) ? trim($input['chronic_medications']) : null;
+$medicationAllergies = !empty($input['medication_allergies']) ? trim($input['medication_allergies']) : null;
+$examinationFindings = !empty($input['examination_findings']) ? trim($input['examination_findings']) : null;
+$laboratoryResults = !empty($input['laboratory_results']) ? trim($input['laboratory_results']) : null;
+$radiologyResults = !empty($input['radiology_results']) ? trim($input['radiology_results']) : null;
+$treatmentBeforeTransfer = !empty($input['treatment_before_transfer']) ? trim($input['treatment_before_transfer']) : null;
+$reasonForTransfer = !empty($input['reason_for_transfer']) ? trim($input['reason_for_transfer']) : null;
+$doctorName = !empty($input['doctor_name']) ? trim($input['doctor_name']) : null;
+$doctorPhone = !empty($input['doctor_phone']) ? trim($input['doctor_phone']) : null;
+$facilitatorPhone = !empty($input['facilitator_phone']) ? trim($input['facilitator_phone']) : null;
 $clinicalReason = trim($input['clinical_reason']);
 $clinicalFindings = !empty($input['clinical_findings']) ? trim($input['clinical_findings']) : null;
 $requestedServices = !empty($input['requested_services']) ? trim($input['requested_services']) : null;
@@ -82,16 +106,46 @@ $stmt->close();
 
 // Insert the referral
 $stmt = $conn->prepare(
-    'INSERT INTO referrals (patient_id, referring_co_id, referring_facility_id, receiving_facility_id, urgency, clinical_reason, clinical_findings, requested_services)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO referrals (
+        patient_id, patient_number, age_years, referring_co_id, referring_facility_id, receiving_facility_id,
+        region, district, transfer_date, referral_number, urgency, diagnosis, temperature, heart_rate,
+        respiratory_rate, blood_pressure, mental_status, alert_status, patient_history, chronic_medications,
+        medication_allergies, examination_findings, laboratory_results, radiology_results,
+        treatment_before_transfer, reason_for_transfer, doctor_name, doctor_phone, facilitator_phone,
+        clinical_reason, clinical_findings, requested_services
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 $stmt->bind_param(
-    'iiiiisss',
+    'issiiissssssssssssssssssssssssss',
     $patientId,
+    $patientNumber,
+    $ageYears,
     $user['id'],
     $user['facility_id'],
     $receivingFacilityId,
+    $region,
+    $district,
+    $transferDate,
+    $referralNumber,
     $urgency,
+    $diagnosis,
+    $temperature,
+    $heartRate,
+    $respiratoryRate,
+    $bloodPressure,
+    $mentalStatus,
+    $alertStatus,
+    $patientHistory,
+    $chronicMedications,
+    $medicationAllergies,
+    $examinationFindings,
+    $laboratoryResults,
+    $radiologyResults,
+    $treatmentBeforeTransfer,
+    $reasonForTransfer,
+    $doctorName,
+    $doctorPhone,
+    $facilitatorPhone,
     $clinicalReason,
     $clinicalFindings,
     $requestedServices

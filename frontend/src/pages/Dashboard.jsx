@@ -669,7 +669,11 @@ export default function Dashboard() {
                             {item.status}
                           </td>
                           <td>
-                            {item.referring_facility} → {item.receiving_facility}
+                            <span className="facility-route">
+                              <span>{item.referring_facility}</span>
+                              <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                              <span>{item.receiving_facility}</span>
+                            </span>
                           </td>
                           <td>{new Date(item.created_at).toLocaleDateString()}</td>
                           <td>
@@ -806,7 +810,7 @@ export default function Dashboard() {
                         <option value="">Select a referral</option>
                         {referrals.map((ref) => (
                           <option key={ref.id} value={ref.id}>
-                            #{ref.id} — {ref.patient_name} → {ref.receiving_facility} ({ref.status})
+                            #{ref.id} - {ref.patient_name} to {ref.receiving_facility} ({ref.status})
                           </option>
                         ))}
                       </select>
@@ -912,6 +916,78 @@ export default function Dashboard() {
         )}
         </div>
       </section>
+
+      {selectedReferral && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setSelectedReferral(null);
+            }
+          }}
+        >
+          <section
+            className="referral-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="referral-modal-title"
+          >
+            <div className="modal-header">
+              <div>
+                <span>Referral #{selectedReferral.id}</span>
+                <h3 id="referral-modal-title">{selectedReferral.patient_name}</h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close-button"
+                aria-label="Close referral details"
+                onClick={() => setSelectedReferral(null)}
+              >
+                <i className="fa-solid fa-xmark" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <div className="modal-meta-grid">
+              <div>
+                <span>Status</span>
+                <strong className={`status-pill status-${selectedReferral.status}`}>
+                  {selectedReferral.status}
+                </strong>
+              </div>
+              <div>
+                <span>Urgency</span>
+                <strong>{selectedReferral.urgency}</strong>
+              </div>
+              <div>
+                <span>Submitted</span>
+                <strong>{new Date(selectedReferral.created_at).toLocaleDateString()}</strong>
+              </div>
+            </div>
+
+            <div className="modal-route">
+              <span>{selectedReferral.referring_facility}</span>
+              <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
+              <span>{selectedReferral.receiving_facility}</span>
+            </div>
+
+            <div className="modal-detail-stack">
+              <div className="referral-detail-block">
+                <span>Patient condition / clinical reason</span>
+                <p>{selectedReferral.clinical_reason || 'Not provided'}</p>
+              </div>
+              <div className="referral-detail-block">
+                <span>Clinical findings</span>
+                <p>{selectedReferral.clinical_findings || 'Not provided'}</p>
+              </div>
+              <div className="referral-detail-block">
+                <span>Requested services</span>
+                <p>{selectedReferral.requested_services || 'Not provided'}</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

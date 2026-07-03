@@ -20,6 +20,11 @@ $user = getCurrentUser();
 $query = "
     SELECT
         fb.id,
+        fb.department,
+        fb.referral_serial_no,
+        fb.referral_diagnosis,
+        fb.confirmed_diagnosis,
+        fb.comments,
         fb.clinical_outcome,
         fb.treatment_given,
         fb.discharge_summary,
