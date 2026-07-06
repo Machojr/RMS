@@ -29,6 +29,67 @@ const sectionMeta = {
   },
 };
 
+const referralExtraSections = [
+  {
+    title: 'Referral Identification',
+    fields: [
+      { name: 'patient_number', label: 'Patient Number', type: 'text' },
+      { name: 'age_years', label: 'Age', type: 'text' },
+      { name: 'region', label: 'Region', type: 'text' },
+      { name: 'district', label: 'District', type: 'text' },
+      { name: 'transfer_date', label: 'Transfer Date', type: 'date' },
+      { name: 'referral_number', label: 'Referral Number', type: 'text' },
+    ],
+  },
+  {
+    title: 'Clinical Assessment',
+    fields: [
+      { name: 'diagnosis', label: 'Diagnosis', type: 'textarea' },
+      { name: 'temperature', label: 'Temperature', type: 'text' },
+      { name: 'heart_rate', label: 'Heart Rate', type: 'text' },
+      { name: 'respiratory_rate', label: 'Respiratory Rate', type: 'text' },
+      { name: 'blood_pressure', label: 'Blood Pressure', type: 'text' },
+      { name: 'mental_status', label: 'Mental Status', type: 'text' },
+      { name: 'treatment_before_transfer', label: 'Treatment Rendered Prior to Transfer', type: 'textarea' },
+      { name: 'reason_for_transfer', label: 'Reason for Transfer', type: 'textarea' },
+    ],
+  },
+];
+
+const referralDetailGroups = [
+  {
+    title: 'Referral Identification',
+    fields: [
+      ['Patient Number', 'patient_number'],
+      ['Age', 'age_years'],
+      ['Region', 'region'],
+      ['District', 'district'],
+      ['Transfer Date', 'transfer_date'],
+      ['Referral Number', 'referral_number'],
+    ],
+  },
+  {
+    title: 'Clinical Assessment',
+    fields: [
+      ['Diagnosis', 'diagnosis'],
+      ['Temperature', 'temperature'],
+      ['Heart Rate', 'heart_rate'],
+      ['Respiratory Rate', 'respiratory_rate'],
+      ['Blood Pressure', 'blood_pressure'],
+      ['Mental Status', 'mental_status'],
+      ['Treatment Before Transfer', 'treatment_before_transfer'],
+      ['Reason for Transfer', 'reason_for_transfer'],
+    ],
+  },
+  {
+    title: 'Referring Doctor',
+    fields: [
+      ['Doctor Name', 'doctor_name'],
+      ['Doctor Phone Number', 'doctor_phone'],
+    ],
+  },
+];
+
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [contentVisible, setContentVisible] = useState(true);
@@ -56,6 +117,11 @@ export default function Dashboard() {
   const [notifications, setNotifications] = useState([]);
   const [feedbackForm, setFeedbackForm] = useState({
     referral_id: '',
+    department: '',
+    referral_serial_no: '',
+    referral_diagnosis: '',
+    confirmed_diagnosis: '',
+    comments: '',
     clinical_outcome: '',
     treatment_given: '',
     discharge_summary: '',
@@ -74,8 +140,22 @@ export default function Dashboard() {
     phone: '',
     address: '',
     national_id: '',
+    patient_number: '',
+    age_years: '',
     receiving_facility_id: '',
+    region: '',
+    district: '',
+    transfer_date: '',
+    referral_number: '',
     urgency: 'routine',
+    diagnosis: '',
+    temperature: '',
+    heart_rate: '',
+    respiratory_rate: '',
+    blood_pressure: '',
+    mental_status: '',
+    treatment_before_transfer: '',
+    reason_for_transfer: '',
     clinical_reason: '',
     clinical_findings: '',
     requested_services: '',
@@ -332,8 +412,22 @@ export default function Dashboard() {
           phone: '',
           address: '',
           national_id: '',
+          patient_number: '',
+          age_years: '',
           receiving_facility_id: '',
+          region: '',
+          district: '',
+          transfer_date: '',
+          referral_number: '',
           urgency: 'routine',
+          diagnosis: '',
+          temperature: '',
+          heart_rate: '',
+          respiratory_rate: '',
+          blood_pressure: '',
+          mental_status: '',
+          treatment_before_transfer: '',
+          reason_for_transfer: '',
           clinical_reason: '',
           clinical_findings: '',
           requested_services: '',
@@ -388,6 +482,11 @@ export default function Dashboard() {
         setFeedbackMessage('Feedback submitted successfully.');
         setFeedbackForm((prev) => ({
           ...prev,
+          department: '',
+          referral_serial_no: '',
+          referral_diagnosis: '',
+          confirmed_diagnosis: '',
+          comments: '',
           clinical_outcome: '',
           treatment_given: '',
           discharge_summary: '',
@@ -556,6 +655,35 @@ export default function Dashboard() {
                           className="form-input"
                         />
                       </div>
+                      {referralExtraSections.map((section) => (
+                        <div key={section.title} className="form-subsection">
+                          <h4>{section.title}</h4>
+                          <div className="form-grid">
+                            {section.fields.map((field) => (
+                              <label key={field.name} className="form-field">
+                                <span>{field.label}</span>
+                                {field.type === 'textarea' ? (
+                                  <textarea
+                                    name={field.name}
+                                    value={referralForm[field.name]}
+                                    onChange={(e) => setReferralForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))}
+                                    className="form-input"
+                                    rows="2"
+                                  />
+                                ) : (
+                                  <input
+                                    type={field.type}
+                                    name={field.name}
+                                    value={referralForm[field.name]}
+                                    onChange={(e) => setReferralForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))}
+                                    className="form-input"
+                                  />
+                                )}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                       <div className="form-field">
                         <span>Receiving facility</span>
                         <select
@@ -827,6 +955,46 @@ export default function Dashboard() {
                       />
                     </div>
                     <div className="form-field">
+                      <span>Department</span>
+                      <input
+                        type="text"
+                        name="department"
+                        value={feedbackForm.department}
+                        onChange={(e) => setFeedbackForm((prev) => ({ ...prev, department: e.target.value }))}
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="form-field">
+                      <span>Referral Serial No.</span>
+                      <input
+                        type="text"
+                        name="referral_serial_no"
+                        value={feedbackForm.referral_serial_no}
+                        onChange={(e) => setFeedbackForm((prev) => ({ ...prev, referral_serial_no: e.target.value }))}
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="form-field">
+                      <span>Referral Diagnosis</span>
+                      <textarea
+                        name="referral_diagnosis"
+                        value={feedbackForm.referral_diagnosis}
+                        onChange={(e) => setFeedbackForm((prev) => ({ ...prev, referral_diagnosis: e.target.value }))}
+                        className="form-input"
+                        rows="2"
+                      />
+                    </div>
+                    <div className="form-field">
+                      <span>Confirmed Diagnosis</span>
+                      <textarea
+                        name="confirmed_diagnosis"
+                        value={feedbackForm.confirmed_diagnosis}
+                        onChange={(e) => setFeedbackForm((prev) => ({ ...prev, confirmed_diagnosis: e.target.value }))}
+                        className="form-input"
+                        rows="2"
+                      />
+                    </div>
+                    <div className="form-field">
                       <span>Treatment given</span>
                       <textarea
                         name="treatment_given"
@@ -856,6 +1024,16 @@ export default function Dashboard() {
                         rows="2"
                       />
                     </div>
+                    <div className="form-field">
+                      <span>Comments</span>
+                      <textarea
+                        name="comments"
+                        value={feedbackForm.comments}
+                        onChange={(e) => setFeedbackForm((prev) => ({ ...prev, comments: e.target.value }))}
+                        className="form-input"
+                        rows="3"
+                      />
+                    </div>
                     {feedbackMessage && (
                       <p className="dashboard-message" style={{ marginBottom: '1rem' }}>
                         {feedbackMessage}
@@ -878,9 +1056,14 @@ export default function Dashboard() {
                     </div>
                     <p><strong>Patient:</strong> {item.patient_name}</p>
                     <p><strong>Sent by:</strong> {item.sent_by}</p>
+                    <p><strong>Department:</strong> {item.department || 'Not provided'}</p>
+                    <p><strong>Referral Serial No.:</strong> {item.referral_serial_no || 'Not provided'}</p>
+                    <p><strong>Referral Diagnosis:</strong> {item.referral_diagnosis || 'Not provided'}</p>
+                    <p><strong>Confirmed Diagnosis:</strong> {item.confirmed_diagnosis || 'Not provided'}</p>
                     <p><strong>Outcome:</strong> {item.clinical_outcome}</p>
                     <p><strong>Treatment:</strong> {item.treatment_given}</p>
                     <p><strong>Summary:</strong> {item.discharge_summary}</p>
+                    <p><strong>Comments:</strong> {item.comments || 'Not provided'}</p>
                   </div>
                 ))
               )}
@@ -972,6 +1155,19 @@ export default function Dashboard() {
             </div>
 
             <div className="modal-detail-stack">
+              {referralDetailGroups.map((group) => (
+                <div key={group.title} className="modal-detail-group">
+                  <h4>{group.title}</h4>
+                  <div className="modal-field-grid">
+                    {group.fields.map(([label, key]) => (
+                      <div key={key} className="referral-detail-block">
+                        <span>{label}</span>
+                        <p>{selectedReferral[key] || 'Not provided'}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
               <div className="referral-detail-block">
                 <span>Patient condition / clinical reason</span>
                 <p>{selectedReferral.clinical_reason || 'Not provided'}</p>

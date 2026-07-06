@@ -56,21 +56,30 @@ $heartRate = !empty($input['heart_rate']) ? trim($input['heart_rate']) : null;
 $respiratoryRate = !empty($input['respiratory_rate']) ? trim($input['respiratory_rate']) : null;
 $bloodPressure = !empty($input['blood_pressure']) ? trim($input['blood_pressure']) : null;
 $mentalStatus = !empty($input['mental_status']) ? trim($input['mental_status']) : null;
-$alertStatus = !empty($input['alert_status']) ? trim($input['alert_status']) : null;
-$patientHistory = !empty($input['patient_history']) ? trim($input['patient_history']) : null;
-$chronicMedications = !empty($input['chronic_medications']) ? trim($input['chronic_medications']) : null;
-$medicationAllergies = !empty($input['medication_allergies']) ? trim($input['medication_allergies']) : null;
-$examinationFindings = !empty($input['examination_findings']) ? trim($input['examination_findings']) : null;
-$laboratoryResults = !empty($input['laboratory_results']) ? trim($input['laboratory_results']) : null;
-$radiologyResults = !empty($input['radiology_results']) ? trim($input['radiology_results']) : null;
+$alertStatus = null;
+$patientHistory = null;
+$chronicMedications = null;
+$medicationAllergies = null;
+$examinationFindings = null;
+$laboratoryResults = null;
+$radiologyResults = null;
 $treatmentBeforeTransfer = !empty($input['treatment_before_transfer']) ? trim($input['treatment_before_transfer']) : null;
 $reasonForTransfer = !empty($input['reason_for_transfer']) ? trim($input['reason_for_transfer']) : null;
-$doctorName = !empty($input['doctor_name']) ? trim($input['doctor_name']) : null;
-$doctorPhone = !empty($input['doctor_phone']) ? trim($input['doctor_phone']) : null;
-$facilitatorPhone = !empty($input['facilitator_phone']) ? trim($input['facilitator_phone']) : null;
+$doctorName = trim($user['first_name'] . ' ' . $user['last_name']);
+$doctorPhone = null;
+$facilitatorPhone = null;
 $clinicalReason = trim($input['clinical_reason']);
 $clinicalFindings = !empty($input['clinical_findings']) ? trim($input['clinical_findings']) : null;
 $requestedServices = !empty($input['requested_services']) ? trim($input['requested_services']) : null;
+
+$doctorStmt = $conn->prepare('SELECT phone FROM users WHERE id = ?');
+$doctorStmt->bind_param('i', $user['id']);
+$doctorStmt->execute();
+$doctorResult = $doctorStmt->get_result();
+if ($doctorRow = $doctorResult->fetch_assoc()) {
+    $doctorPhone = $doctorRow['phone'];
+}
+$doctorStmt->close();
 
 // Validate receiving facility exists
 $stmt = $conn->prepare('SELECT id FROM facilities WHERE id = ?');

@@ -226,6 +226,30 @@ button {
   gap: 1.25rem;
 }
 
+.form-subsection {
+  display: grid;
+  gap: 1rem;
+  padding: 1.35rem;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+}
+
+.form-subsection h4 {
+  margin: 0;
+  color: #14532d;
+  font-size: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
 .form-field span {
   display: block;
   margin-bottom: 0.75rem;
@@ -574,6 +598,23 @@ button {
 .modal-detail-stack {
   display: grid;
   gap: 1rem;
+}
+
+.modal-detail-group {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.modal-detail-group h4 {
+  margin: 0;
+  color: #14532d;
+  font-size: 1rem;
+}
+
+.modal-field-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
 }
 
 .modal-detail-stack .referral-detail-block {

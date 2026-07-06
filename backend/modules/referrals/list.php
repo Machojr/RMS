@@ -54,6 +54,7 @@ $query = "
         p.last_name AS patient_last_name,
         u.first_name AS co_first_name,
         u.last_name AS co_last_name,
+        u.phone AS co_phone,
         f1.name AS referring_facility,
         f2.name AS receiving_facility
     FROM referrals r
@@ -82,7 +83,13 @@ $referrals = [];
 while ($row = $result->fetch_assoc()) {
     $row['patient_name'] = trim($row['patient_first_name'] . ' ' . $row['patient_last_name']);
     $row['referring_co'] = trim($row['co_first_name'] . ' ' . $row['co_last_name']);
-    unset($row['patient_first_name'], $row['patient_last_name'], $row['co_first_name'], $row['co_last_name']);
+    if (empty($row['doctor_name'])) {
+        $row['doctor_name'] = $row['referring_co'];
+    }
+    if (empty($row['doctor_phone'])) {
+        $row['doctor_phone'] = $row['co_phone'];
+    }
+    unset($row['patient_first_name'], $row['patient_last_name'], $row['co_first_name'], $row['co_last_name'], $row['co_phone']);
     $referrals[] = $row;
 }
 
