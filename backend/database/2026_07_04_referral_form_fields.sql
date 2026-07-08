@@ -27,7 +27,7 @@ ALTER TABLE referrals
     ADD COLUMN facilitator_phone VARCHAR(30) NULL AFTER doctor_phone;
 
 ALTER TABLE feedback
-    ADD COLUMN department VARCHAR(150) NULL AFTER sent_by_admin_id,
+    ADD COLUMN department VARCHAR(150) NULL AFTER sent_by_receptionist_id,
     ADD COLUMN referral_serial_no VARCHAR(100) NULL AFTER department,
     ADD COLUMN referral_diagnosis TEXT NULL AFTER referral_serial_no,
     ADD COLUMN confirmed_diagnosis TEXT NULL AFTER referral_diagnosis,

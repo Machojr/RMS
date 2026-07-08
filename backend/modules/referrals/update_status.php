@@ -33,12 +33,12 @@ if (!in_array($status, $allowed, true)) {
 $user = getCurrentUser();
 
 // Check access
-if ($user['role'] === 'admin') {
+if ($user['role'] === 'receptionist') {
     if (!canAccessReferral($referralId, $conn)) {
         sendError('Access denied', 403);
     }
 } elseif ($user['role'] !== 'moh') {
-    sendError('Only Admin or MoH can update referral status', 403);
+    sendError('Only Receptionist or MoH can update referral status', 403);
 }
 
 // Prepare update and timestamp fields

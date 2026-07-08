@@ -35,12 +35,12 @@ $dischargeSummary = trim($input['discharge_summary'] ?? '');
 $followUpInstructions = trim($input['follow_up_instructions'] ?? '');
 
 $user = getCurrentUser();
-if ($user['role'] !== 'admin' && $user['role'] !== 'moh') {
-    sendError('Only Admin or MoH can submit feedback', 403);
+if ($user['role'] !== 'receptionist' && $user['role'] !== 'moh') {
+    sendError('Only Receptionist or MoH can submit feedback', 403);
 }
 
-// Verify referral access for Admins
-if ($user['role'] === 'admin') {
+// Verify referral access for Receptionists
+if ($user['role'] === 'receptionist') {
     $stmt = $conn->prepare('SELECT id FROM referrals WHERE id = ? AND receiving_facility_id = ?');
     $stmt->bind_param('ii', $referralId, $user['facility_id']);
     $stmt->execute();
@@ -53,7 +53,7 @@ if ($user['role'] === 'admin') {
 
 $stmt = $conn->prepare(
     'INSERT INTO feedback (
-        referral_id, sent_by_admin_id, department, referral_serial_no, referral_diagnosis,
+        referral_id, sent_by_receptionist_id, department, referral_serial_no, referral_diagnosis,
         confirmed_diagnosis, comments, clinical_outcome, treatment_given, discharge_summary, follow_up_instructions
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );

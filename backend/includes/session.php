@@ -49,17 +49,30 @@ function canAccessReferral($referral_id, $conn) {
     $user = getCurrentUser();
     if (!$user) return false;
 
-    // COs can access their own referrals
+    // COs can access their own referrals or referrals for their receiving department if they are a receiving doctor
     if ($user['role'] === 'co') {
-        $stmt = $conn->prepare("SELECT id FROM referrals WHERE id = ? AND referring_co_id = ?");
-        $stmt->bind_param("ii", $referral_id, $user['id']);
+        $stmt = $conn->prepare(
+            "SELECT r.id
+             FROM referrals r
+             LEFT JOIN doctors doc ON doc.user_id = ?
+             LEFT JOIN departments dep ON doc.department_id = dep.id
+             WHERE r.id = ?
+               AND (
+                   r.referring_co_id = ?
+                   OR (
+                       r.receiving_department_id = dep.id
+                       AND r.receiving_facility_id = dep.facility_id
+                   )
+               )"
+        );
+        $stmt->bind_param("iii", $user['id'], $referral_id, $user['id']);
         $stmt->execute();
         $result = $stmt->get_result();
         return $result->num_rows > 0;
     }
 
-    // Admins can access referrals for their facility (as receiving facility)
-    if ($user['role'] === 'admin') {
+    // Receptionists can access referrals for their facility (as receiving facility)
+    if ($user['role'] === 'receptionist') {
         $stmt = $conn->prepare("SELECT id FROM referrals WHERE id = ? AND receiving_facility_id = ?");
         $stmt->bind_param("ii", $referral_id, $user['facility_id']);
         $stmt->execute();

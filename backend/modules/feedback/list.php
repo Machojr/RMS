@@ -39,13 +39,13 @@ $query = "
     FROM feedback fb
     JOIN referrals r ON fb.referral_id = r.id
     JOIN patients p ON r.patient_id = p.id
-    JOIN users u ON fb.sent_by_admin_id = u.id
+    JOIN users u ON fb.sent_by_receptionist_id = u.id
 ";
 
 if ($user['role'] === 'moh') {
     $query .= " ORDER BY fb.sent_at DESC";
     $stmt = $conn->prepare($query);
-} elseif ($user['role'] === 'admin') {
+} elseif ($user['role'] === 'receptionist') {
     $query .= " WHERE r.referring_facility_id = ? OR r.receiving_facility_id = ? ORDER BY fb.sent_at DESC";
     $stmt = $conn->prepare($query);
     $stmt->bind_param('ii', $user['facility_id'], $user['facility_id']);

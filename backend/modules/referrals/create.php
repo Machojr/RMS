@@ -31,6 +31,7 @@ validateRequired($input, [
     'patient_last_name',
     'gender',
     'receiving_facility_id',
+    'receiving_department_id',
     'urgency',
     'clinical_reason',
 ]);
@@ -45,6 +46,8 @@ $nationalId = !empty($input['national_id']) ? trim($input['national_id']) : null
 $patientNumber = !empty($input['patient_number']) ? trim($input['patient_number']) : null;
 $ageYears = !empty($input['age_years']) ? trim($input['age_years']) : null;
 $receivingFacilityId = (int) $input['receiving_facility_id'];
+$receivingDepartmentId = isset($input['receiving_department_id']) ? (int)$input['receiving_department_id'] : null;
+$assignedDoctorId = isset($input['assigned_doctor_id']) ? (int)$input['assigned_doctor_id'] : null;
 $region = !empty($input['region']) ? trim($input['region']) : null;
 $district = !empty($input['district']) ? trim($input['district']) : null;
 $transferDate = !empty($input['transfer_date']) ? trim($input['transfer_date']) : null;
@@ -113,25 +116,27 @@ if (!$success) {
 $patientId = $stmt->insert_id;
 $stmt->close();
 
-// Insert the referral
+// Insert the referral (including receiving department and optional assigned doctor)
 $stmt = $conn->prepare(
     'INSERT INTO referrals (
         patient_id, patient_number, age_years, referring_co_id, referring_facility_id, receiving_facility_id,
-        region, district, transfer_date, referral_number, urgency, diagnosis, temperature, heart_rate,
-        respiratory_rate, blood_pressure, mental_status, alert_status, patient_history, chronic_medications,
-        medication_allergies, examination_findings, laboratory_results, radiology_results,
-        treatment_before_transfer, reason_for_transfer, doctor_name, doctor_phone, facilitator_phone,
+        receiving_department_id, assigned_doctor_id, region, district, transfer_date, referral_number, urgency,
+        diagnosis, temperature, heart_rate, respiratory_rate, blood_pressure, mental_status, alert_status,
+        patient_history, chronic_medications, medication_allergies, examination_findings, laboratory_results,
+        radiology_results, treatment_before_transfer, reason_for_transfer, doctor_name, doctor_phone, facilitator_phone,
         clinical_reason, clinical_findings, requested_services
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 $stmt->bind_param(
-    'issiiissssssssssssssssssssssssss',
+    'issiiiiissssssssssssssssssssssssss',
     $patientId,
     $patientNumber,
     $ageYears,
     $user['id'],
     $user['facility_id'],
     $receivingFacilityId,
+    $receivingDepartmentId,
+    $assignedDoctorId,
     $region,
     $district,
     $transferDate,

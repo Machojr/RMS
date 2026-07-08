@@ -35,8 +35,8 @@ const roles = [
     description: 'Submit patient referrals, follow referral status, and receive clinical outcomes from receiving facilities.',
   },
   {
-    title: 'Hospital Admin',
-    description: 'Oversee facility referrals, accept transfers, and manage clinical feedback for your facility.',
+    title: 'Receptionist',
+    description: 'Coordinate incoming referrals, liaise with receiving clinicians, and manage local referral workflow.',
   },
   {
     title: 'MOH Official',

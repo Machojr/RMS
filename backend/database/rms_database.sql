@@ -13,7 +13,7 @@ CREATE TABLE users (
     id INT PRIMARY KEY AUTO_INCREMENT,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    role ENUM('co', 'admin', 'moh') NOT NULL,
+    role ENUM('co', 'receptionist', 'moh') NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     facility_id INT,
@@ -116,7 +116,7 @@ CREATE TABLE referrals (
 CREATE TABLE feedback (
     id INT PRIMARY KEY AUTO_INCREMENT,
     referral_id INT NOT NULL,
-    sent_by_admin_id INT NOT NULL,
+    sent_by_receptionist_id INT NOT NULL,
     department VARCHAR(150),
     referral_serial_no VARCHAR(100),
     referral_diagnosis TEXT,
@@ -170,7 +170,7 @@ INSERT INTO users (email, password, role, first_name, last_name, facility_id, ph
 -- CO (Clinician/Doctor)
 ('co@rms.go.tz', 'co123', 'co', 'John', 'Doe', 8, '+255 712 345 678'),
 -- Hospital Admin
-('admin@rms.go.tz', 'admin123', 'admin', 'Jane', 'Smith', 7, '+255 713 456 789'),
+('receptionist@rms.go.tz', 'admin123', 'receptionist', 'Jane', 'Smith', 7, '+255 713 456 789'),
 -- MOH Official
 ('moh@rms.go.tz', 'moh123', 'moh', 'David', 'Wilson', NULL, '+255 714 567 890');
 
@@ -191,7 +191,7 @@ INSERT INTO referrals (patient_id, referring_co_id, referring_facility_id, recei
 -- ===========================================
 -- SEED DATA: Sample Feedback
 -- ===========================================
-INSERT INTO feedback (referral_id, sent_by_admin_id, clinical_outcome, treatment_given, discharge_summary) VALUES
+INSERT INTO feedback (referral_id, sent_by_receptionist_id, clinical_outcome, treatment_given, discharge_summary) VALUES
 (1, 2, 'Acute appendicitis confirmed', 'Emergency appendectomy performed successfully', 'Patient discharged after 3 days, full recovery expected');
 
 -- ===========================================

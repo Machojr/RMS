@@ -40,7 +40,7 @@ if ($user['role'] === 'moh') {
         ORDER BY p.created_at DESC
     ";
     $stmt = $conn->prepare($query);
-} elseif ($user['role'] === 'admin') {
+} elseif ($user['role'] === 'receptionist') {
     $query .= "
         WHERE r.referring_facility_id = ? OR r.receiving_facility_id = ?
         GROUP BY p.id

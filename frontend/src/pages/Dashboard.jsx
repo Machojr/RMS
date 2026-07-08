@@ -115,6 +115,18 @@ export default function Dashboard() {
   const [facilities, setFacilities] = useState([]);
   const [feedbackItems, setFeedbackItems] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [notificationForm, setNotificationForm] = useState({
+    referral_id: '',
+    department_id: '',
+    recipient_doctor_id: '',
+    notification_type: 'email',
+    note: '',
+  });
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [sendingNotification, setSendingNotification] = useState(false);
+  const [notificationError, setNotificationError] = useState('');
+  const [notificationDepartments, setNotificationDepartments] = useState([]);
+  const [notificationDoctors, setNotificationDoctors] = useState([]);
   const [feedbackForm, setFeedbackForm] = useState({
     referral_id: '',
     department: '',
@@ -143,6 +155,8 @@ export default function Dashboard() {
     patient_number: '',
     age_years: '',
     receiving_facility_id: '',
+    receiving_department_id: '',
+    assigned_doctor_id: '',
     region: '',
     district: '',
     transfer_date: '',
@@ -160,9 +174,21 @@ export default function Dashboard() {
     clinical_findings: '',
     requested_services: '',
   });
+  const [departments, setDepartments] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [referralDoctors, setReferralDoctors] = useState([]);
   const [referralMessage, setReferralMessage] = useState('');
   const [submittingReferral, setSubmittingReferral] = useState(false);
   const [selectedReferral, setSelectedReferral] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [messageRecipients, setMessageRecipients] = useState([]);
+  const [messageForm, setMessageForm] = useState({ recipient_id: '', message: '' });
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageError, setMessageError] = useState('');
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [assigningDoctor, setAssigningDoctor] = useState(false);
+  const [assignmentMessage, setAssignmentMessage] = useState('');
+  const [selectedDoctorIdForAssignment, setSelectedDoctorIdForAssignment] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -376,14 +402,130 @@ export default function Dashboard() {
       fetchFeedback();
     }
 
-    if (activeTab === 'feedback' && referrals.length === 0 && summary?.user?.role === 'admin') {
+    if (activeTab === 'feedback' && referrals.length === 0 && summary?.user?.role === 'receptionist') {
       fetchReferrals();
     }
 
     if (activeTab === 'notifications' && notifications.length === 0) {
       fetchNotifications();
     }
-  }, [activeTab, referrals.length, patients.length, facilities.length, feedbackItems.length, notifications.length]);
+  }, [activeTab, referrals.length, patients.length, facilities.length, feedbackItems.length, notifications.length, summary?.user?.role]);
+
+  useEffect(() => {
+    async function fetchNotificationDepartments(referralId) {
+      if (!referralId) {
+        setNotificationDepartments([]);
+        setNotificationDoctors([]);
+        return;
+      }
+
+      const referral = referrals.find((item) => item.id === Number(referralId));
+      if (!referral) {
+        setNotificationDepartments([]);
+        setNotificationDoctors([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(apiUrl(`/departments/list.php?facility_id=${referral.receiving_facility_id}`), {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setNotificationDepartments(data.departments);
+        } else {
+          setNotificationDepartments([]);
+        }
+      } catch (err) {
+        setNotificationDepartments([]);
+      }
+      setNotificationDoctors([]);
+    }
+
+    fetchNotificationDepartments(notificationForm.referral_id);
+  }, [notificationForm.referral_id, referrals]);
+
+  useEffect(() => {
+    async function fetchNotificationDoctors(facilityId, departmentId) {
+      if (!facilityId || !departmentId) {
+        setNotificationDoctors([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(apiUrl(`/doctors/list.php?facility_id=${facilityId}&department_id=${departmentId}`), {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setNotificationDoctors(data.doctors);
+        } else {
+          setNotificationDoctors([]);
+        }
+      } catch (err) {
+        setNotificationDoctors([]);
+      }
+    }
+
+    const referral = referrals.find((item) => item.id === Number(notificationForm.referral_id));
+    if (referral && notificationForm.department_id) {
+      fetchNotificationDoctors(referral.receiving_facility_id, notificationForm.department_id);
+    } else {
+      setNotificationDoctors([]);
+    }
+  }, [notificationForm.department_id, notificationForm.referral_id, referrals]);
+
+  useEffect(() => {
+    async function fetchDepartments(facilityId) {
+      if (!facilityId) {
+        setDepartments([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(apiUrl(`/departments/list.php?facility_id=${facilityId}`), {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setDepartments(data.departments);
+        } else {
+          setDepartments([]);
+        }
+      } catch (err) {
+        setDepartments([]);
+      }
+    }
+
+    async function fetchDoctors(facilityId, departmentId) {
+      if (!facilityId) {
+        setDoctors([]);
+        return;
+      }
+
+      const query = `facility_id=${facilityId}${departmentId ? `&department_id=${departmentId}` : ''}`;
+      try {
+        const response = await fetch(apiUrl(`/doctors/list.php?${query}`), {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setDoctors(data.doctors);
+        } else {
+          setDoctors([]);
+        }
+      } catch (err) {
+        setDoctors([]);
+      }
+    }
+
+    fetchDepartments(referralForm.receiving_facility_id);
+    fetchDoctors(referralForm.receiving_facility_id, referralForm.receiving_department_id);
+  }, [referralForm.receiving_facility_id, referralForm.receiving_department_id]);
   
   const submitReferral = async (event) => {
     event.preventDefault();
@@ -463,6 +605,176 @@ export default function Dashboard() {
       setActionError('Unable to reach update service.');
     }
     setActionProcessing(null);
+  };
+
+  const loadMessagesForReferral = async (referralId) => {
+    setLoadingMessages(true);
+    try {
+      const response = await fetch(apiUrl(`/communications/list.php?referral_id=${referralId}`), {
+        method: 'GET',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setMessages(data.messages);
+      } else {
+        setMessages([]);
+      }
+    } catch (err) {
+      setMessages([]);
+    }
+    setLoadingMessages(false);
+  };
+
+  const loadReferralDoctors = async (referral) => {
+    if (!referral?.receiving_facility_id) {
+      setReferralDoctors([]);
+      return;
+    }
+
+    const query = `facility_id=${referral.receiving_facility_id}${referral.receiving_department_id ? `&department_id=${referral.receiving_department_id}` : ''}`;
+    try {
+      const response = await fetch(apiUrl(`/doctors/list.php?${query}`), {
+        method: 'GET',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setReferralDoctors(data.doctors);
+      } else {
+        setReferralDoctors([]);
+      }
+    } catch (err) {
+      setReferralDoctors([]);
+    }
+  };
+
+  const loadMessageRecipients = (referral) => {
+    if (!referral) {
+      setMessageRecipients([]);
+      return;
+    }
+
+    const recipients = referralDoctors.map((doctor) => ({
+      id: doctor.user_id,
+      label: `Doctor: ${doctor.full_name} (${doctor.department_name})`,
+    }));
+
+    setMessageRecipients(recipients);
+  };
+
+  useEffect(() => {
+    if (!selectedReferral) {
+      setMessages([]);
+      setMessageRecipients([]);
+      setMessageForm({ recipient_id: '', message: '' });
+      setMessageError('');
+      setReferralDoctors([]);
+      setSelectedDoctorIdForAssignment('');
+      setAssignmentMessage('');
+      return;
+    }
+
+    loadMessagesForReferral(selectedReferral.id);
+    loadReferralDoctors(selectedReferral);
+  }, [selectedReferral, summary?.user?.role]);
+
+  useEffect(() => {
+    if (selectedReferral) {
+      loadMessageRecipients(selectedReferral);
+    }
+  }, [selectedReferral, referralDoctors]);
+
+  const sendMessage = async (event) => {
+    event.preventDefault();
+    setSendingMessage(true);
+    setMessageError('');
+
+    try {
+      const response = await fetch(apiUrl('/communications/create.php'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          referral_id: selectedReferral.id,
+          recipient_id: messageForm.recipient_id,
+          message: messageForm.message,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setMessageForm({ recipient_id: '', message: '' });
+        await loadMessagesForReferral(selectedReferral.id);
+      } else {
+        setMessageError(data.error || 'Unable to send message.');
+      }
+    } catch (err) {
+      setMessageError('Unable to reach communications service.');
+    }
+    setSendingMessage(false);
+  };
+
+  const assignDoctorToReferral = async (referralId) => {
+    if (!selectedDoctorIdForAssignment) {
+      setAssignmentMessage('Please choose a doctor to assign.');
+      return;
+    }
+
+    setAssigningDoctor(true);
+    setAssignmentMessage('');
+    try {
+      const response = await fetch(apiUrl('/referrals/assign_doctor.php'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ referral_id: referralId, doctor_id: selectedDoctorIdForAssignment }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setAssignmentMessage('Doctor assigned successfully. Refreshing referral...');
+        setSelectedReferral(null);
+        setReferrals([]);
+      } else {
+        setAssignmentMessage(data.error || 'Unable to assign doctor.');
+      }
+    } catch (err) {
+      setAssignmentMessage('Unable to reach assign doctor service.');
+    }
+    setAssigningDoctor(false);
+  };
+
+  const sendNotification = async (event) => {
+    event.preventDefault();
+    setSendingNotification(true);
+    setNotificationMessage('');
+    setNotificationError('');
+
+    try {
+      const response = await fetch(apiUrl('/notifications/create.php'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(notificationForm),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setNotificationMessage('Notification created successfully.');
+        setNotificationForm((prev) => ({
+          ...prev,
+          department_id: '',
+          recipient_doctor_id: '',
+          notification_type: 'email',
+          note: '',
+        }));
+        setNotifications([]);
+      } else {
+        setNotificationError(data.error || 'Unable to create notification.');
+      }
+    } catch (err) {
+      setNotificationError('Unable to reach notification service.');
+    }
+
+    setSendingNotification(false);
   };
 
   const submitFeedback = async (event) => {
@@ -689,7 +1001,12 @@ export default function Dashboard() {
                         <select
                           name="receiving_facility_id"
                           value={referralForm.receiving_facility_id}
-                          onChange={(e) => setReferralForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))}
+                          onChange={(e) => setReferralForm((prev) => ({
+                            ...prev,
+                            [e.target.name]: e.target.value,
+                            receiving_department_id: '',
+                            assigned_doctor_id: '',
+                          }))}
                           required
                           className="form-input"
                         >
@@ -701,6 +1018,45 @@ export default function Dashboard() {
                                 {facility.name} ({facility.region})
                               </option>
                             ))}
+                        </select>
+                      </div>
+                      <div className="form-field">
+                        <span>Receiving department</span>
+                        <select
+                          name="receiving_department_id"
+                          value={referralForm.receiving_department_id}
+                          onChange={(e) => setReferralForm((prev) => ({
+                            ...prev,
+                            [e.target.name]: e.target.value,
+                            assigned_doctor_id: '',
+                          }))}
+                          required
+                          className="form-input"
+                          disabled={departments.length === 0}
+                        >
+                          <option value="">Choose department</option>
+                          {departments.map((department) => (
+                            <option key={department.id} value={department.id}>
+                              {department.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-field">
+                        <span>Assign doctor (optional)</span>
+                        <select
+                          name="assigned_doctor_id"
+                          value={referralForm.assigned_doctor_id}
+                          onChange={(e) => setReferralForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))}
+                          className="form-input"
+                          disabled={doctors.length === 0}
+                        >
+                          <option value="">Choose doctor</option>
+                          {doctors.map((doctor) => (
+                            <option key={doctor.id} value={doctor.id}>
+                              {doctor.full_name} — {doctor.department_name}
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div className="form-field">
@@ -805,7 +1161,7 @@ export default function Dashboard() {
                           </td>
                           <td>{new Date(item.created_at).toLocaleDateString()}</td>
                           <td>
-                            {summary?.user?.role === 'admin' && (
+                            {summary?.user?.role === 'receptionist' && (
                               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                 {item.status === 'pending' && (
                                   <>
@@ -922,7 +1278,7 @@ export default function Dashboard() {
             <p className="dashboard-message dashboard-error">{sectionErrors.feedback}</p>
           ) : (
             <div className="grid-card feedback-grid">
-              {summary?.user?.role === 'admin' && (
+              {summary?.user?.role === 'receptionist' && (
                 <div className="feedback-card" style={{ marginBottom: '1.5rem' }}>
                   <h3>Submit Clinical Feedback</h3>
                   <form onSubmit={submitFeedback}>
@@ -1077,24 +1433,119 @@ export default function Dashboard() {
           ) : sectionErrors.notifications ? (
             <p className="dashboard-message dashboard-error">{sectionErrors.notifications}</p>
           ) : (
-            <div className="grid-card notification-grid">
-              {notifications.length === 0 ? (
-                <p>No notifications available yet.</p>
-              ) : (
-                notifications.map((item) => (
-                  <div key={item.id} className="notification-card">
-                    <div className="notification-meta">
-                      <span className={`notification-type type-${item.type}`}>{item.type.toUpperCase()}</span>
-                      <span>{new Date(item.sent_at).toLocaleString()}</span>
+            <>
+              {summary?.user?.role === 'receptionist' && (
+                <div className="form-card" style={{ marginBottom: '1.75rem' }}>
+                  <h3>Create Referral Notification</h3>
+                  <form onSubmit={sendNotification} className="login-form">
+                    <div className="form-field">
+                      <span>Referral</span>
+                      <select
+                        name="referral_id"
+                        value={notificationForm.referral_id}
+                        onChange={(e) => setNotificationForm((prev) => ({ ...prev, referral_id: e.target.value, department_id: '', recipient_doctor_id: '' }))}
+                        className="form-input"
+                        required
+                      >
+                        <option value="">Select referral</option>
+                        {referrals.map((ref) => (
+                          <option key={ref.id} value={ref.id}>
+                            #{ref.id} - {ref.patient_name} to {ref.receiving_facility}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <p><strong>Subject:</strong> {item.subject}</p>
-                    <p><strong>Recipient:</strong> {item.recipient_email || item.recipient_phone}</p>
-                    <p><strong>Status:</strong> {item.status}</p>
-                    {item.referral_id && <p><strong>Referral:</strong> #{item.referral_id} ({item.patient_name})</p>}
-                  </div>
-                ))
+                    <div className="form-field">
+                      <span>Department</span>
+                      <select
+                        name="department_id"
+                        value={notificationForm.department_id}
+                        onChange={(e) => setNotificationForm((prev) => ({ ...prev, department_id: e.target.value, recipient_doctor_id: '' }))}
+                        className="form-input"
+                        required
+                        disabled={!notificationForm.referral_id || notificationDepartments.length === 0}
+                      >
+                        <option value="">Select department</option>
+                        {notificationDepartments.map((dept) => (
+                          <option key={dept.id} value={dept.id}>
+                            {dept.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-field">
+                      <span>Doctor</span>
+                      <select
+                        name="recipient_doctor_id"
+                        value={notificationForm.recipient_doctor_id}
+                        onChange={(e) => setNotificationForm((prev) => ({ ...prev, recipient_doctor_id: e.target.value }))}
+                        className="form-input"
+                        required
+                        disabled={!notificationForm.department_id || notificationDoctors.length === 0}
+                      >
+                        <option value="">Select doctor</option>
+                        {notificationDoctors.map((doctor) => (
+                          <option key={doctor.id} value={doctor.id}>
+                            {doctor.full_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-field">
+                      <span>Notification type</span>
+                      <select
+                        name="notification_type"
+                        value={notificationForm.notification_type}
+                        onChange={(e) => setNotificationForm((prev) => ({ ...prev, notification_type: e.target.value }))}
+                        className="form-input"
+                      >
+                        <option value="email">Email</option>
+                        <option value="sms">SMS</option>
+                        <option value="both">Email + SMS</option>
+                      </select>
+                    </div>
+                    <div className="form-field">
+                      <span>Message note</span>
+                      <textarea
+                        name="note"
+                        value={notificationForm.note}
+                        onChange={(e) => setNotificationForm((prev) => ({ ...prev, note: e.target.value }))}
+                        className="form-input"
+                        rows="3"
+                      />
+                    </div>
+                    {notificationError && (
+                      <p className="dashboard-message dashboard-error">{notificationError}</p>
+                    )}
+                    {notificationMessage && (
+                      <p className="dashboard-message">{notificationMessage}</p>
+                    )}
+                    <button type="submit" className="button" disabled={sendingNotification || !notificationForm.referral_id || !notificationForm.department_id || !notificationForm.recipient_doctor_id}>
+                      {sendingNotification ? 'Sending...' : 'Send notification'}
+                    </button>
+                  </form>
+                </div>
               )}
-            </div>
+
+              <div className="grid-card notification-grid">
+                {notifications.length === 0 ? (
+                  <p>No notifications available yet.</p>
+                ) : (
+                  notifications.map((item) => (
+                    <div key={item.id} className="notification-card">
+                      <div className="notification-meta">
+                        <span className={`notification-type type-${item.type}`}>{item.type.toUpperCase()}</span>
+                        <span>{new Date(item.sent_at).toLocaleString()}</span>
+                      </div>
+                      <p><strong>Subject:</strong> {item.subject}</p>
+                      <p><strong>Recipient:</strong> {item.recipient_email || item.recipient_phone}</p>
+                      <p><strong>Status:</strong> {item.status}</p>
+                      {item.referral_id && <p><strong>Referral:</strong> #{item.referral_id} ({item.patient_name})</p>}
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
           )
         )}
         </div>
@@ -1179,6 +1630,114 @@ export default function Dashboard() {
               <div className="referral-detail-block">
                 <span>Requested services</span>
                 <p>{selectedReferral.requested_services || 'Not provided'}</p>
+              </div>
+              <div className="referral-detail-block">
+                <span>Receiving department</span>
+                <p>{selectedReferral.receiving_department || 'Not provided'}</p>
+              </div>
+              <div className="referral-detail-block">
+                <span>Assigned doctor</span>
+                <p>{selectedReferral.assigned_doctor_name || 'Not assigned'}</p>
+              </div>
+              {summary?.user?.role === 'receptionist' && !selectedReferral.assigned_doctor_name && referralDoctors.length > 0 && (
+                <div className="modal-detail-group" style={{ width: '100%' }}>
+                  <h4>Assign Doctor</h4>
+                  <div className="modal-field-grid">
+                    <div className="referral-detail-block">
+                      <span>Select doctor for this referral</span>
+                      <select
+                        value={selectedDoctorIdForAssignment}
+                        onChange={(e) => setSelectedDoctorIdForAssignment(e.target.value)}
+                        className="form-input"
+                      >
+                        <option value="">Choose doctor</option>
+                        {referralDoctors.map((doctor) => (
+                          <option key={doctor.id} value={doctor.id}>
+                            {doctor.full_name} — {doctor.department_name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="button"
+                        onClick={() => assignDoctorToReferral(selectedReferral.id)}
+                        disabled={assigningDoctor}
+                        style={{ marginTop: '0.75rem' }}
+                      >
+                        {assigningDoctor ? 'Assigning...' : 'Assign doctor'}
+                      </button>
+                      {assignmentMessage && (
+                        <p className="dashboard-message" style={{ marginTop: '0.75rem' }}>
+                          {assignmentMessage}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="modal-detail-group" style={{ width: '100%' }}>
+                <h4>Referral communications</h4>
+                <div className="modal-field-grid">
+                  <div className="referral-detail-block" style={{ width: '100%' }}>
+                    {loadingMessages ? (
+                      <p>Loading messages...</p>
+                    ) : messages.length === 0 ? (
+                      <p>No messages yet for this referral.</p>
+                    ) : (
+                      <div className="message-list">
+                        {messages.map((message) => (
+                          <div key={message.id} className="message-card">
+                            <div className="message-card-header">
+                              <strong>{message.sender_name}</strong>
+                              <span>{new Date(message.created_at).toLocaleString()}</span>
+                            </div>
+                            <p>{message.message}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {summary?.user?.role === 'receptionist' ? (
+                      <form onSubmit={sendMessage} className="login-form" style={{ marginTop: '1rem' }}>
+                        <div className="form-field">
+                          <span>Send to</span>
+                          <select
+                            name="recipient_id"
+                            value={messageForm.recipient_id}
+                            onChange={(e) => setMessageForm((prev) => ({ ...prev, recipient_id: e.target.value }))}
+                            className="form-input"
+                            required
+                          >
+                            <option value="">Choose doctor</option>
+                            {messageRecipients.map((recipient) => (
+                              <option key={recipient.id} value={recipient.id}>
+                                {recipient.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="form-field">
+                          <span>Message</span>
+                          <textarea
+                            name="message"
+                            value={messageForm.message}
+                            onChange={(e) => setMessageForm((prev) => ({ ...prev, message: e.target.value }))}
+                            className="form-input"
+                            rows="3"
+                            required
+                          />
+                        </div>
+                        {messageError && (
+                          <p className="dashboard-message dashboard-error">{messageError}</p>
+                        )}
+                        <button type="submit" className="button" disabled={sendingMessage || messageRecipients.length === 0}>
+                          {sendingMessage ? 'Sending...' : 'Send message'}
+                        </button>
+                      </form>
+                    ) : (
+                      <p className="dashboard-message">Only receptionists can send messages for this referral.</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </section>

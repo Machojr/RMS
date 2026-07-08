@@ -28,7 +28,7 @@
 
 Healthcare facilities in Tanzania currently rely on manual, paper-based referral letters that are frequently lost, provide no tracking mechanism, and offer no feedback to referring COs. The **Referral Management System (RMS)** solves this by providing a structured, digital referral platform accessible via any standard web browser.
 
-The system supports **three user roles** — COs/Doctors, Hospital Administrators, and Ministry of Health Officials — each with role-based access to specific features. Users are registered directly in the database by the developer during system setup.
+The system supports **three user roles** — COs/Doctors, Receptionists, and Ministry of Health Officials — each with role-based access to specific features. Users are registered directly in the database by the developer during system setup.
 
 ---
 
@@ -264,7 +264,7 @@ The file `backend/database/rms_database.sql` contains:
 
 | Table | Description | Key Fields |
 |---|---|---|
-| `users` | All system users with roles | id, email, password, role (co/admin/moh), facility_id |
+| `users` | All system users with roles | id, email, password, role (co/receptionist/moh), facility_id |
 | `facilities` | Health facilities (5 tiers) | id, name, tier, region, district, capacity |
 | `patients` | Patient basic information | id, first_name, last_name, date_of_birth, gender |
 | `referrals` | Referral records & status | id, patient_id, status (pending/accepted/in_progress/completed/rejected), urgency |
@@ -291,7 +291,7 @@ pending → accepted → in_progress → completed
 ### Seed Data Included
 
 - **9 sample facilities** across different tiers and regions
-- **3 test users** (one per role: CO, Admin, MOH)
+-- **3 test users** (one per role: CO, Receptionist, MOH)
 - **3 sample patients**
 - **1 sample referral** with feedback and notifications
 
@@ -304,7 +304,7 @@ These accounts are seeded in the database for testing. **Change passwords before
 | Role | Email | Password |
 |---|---|---|
 | CO / Doctor | co@rms.go.tz | co123 |
-| Hospital Admin | admin@rms.go.tz | admin123 |
+| Receptionist | receptionist@rms.go.tz | admin123 |
 | MoH Official | moh@rms.go.tz | moh123 |
 
 > **Security Note:** Passwords are stored in plain text for development/testing. In production, implement proper password hashing using PHP's `password_hash()` and `password_verify()`. All users are registered directly in the database by the developer. There is no public self-registration feature in this system.
@@ -409,7 +409,7 @@ CO creates referral
          ↓
     Status: PENDING
          ↓
-Hospital Admin reviews referral
+Receptionist reviews referral
          ↓
    ┌─────┴─────┐
 ACCEPTED     REJECTED

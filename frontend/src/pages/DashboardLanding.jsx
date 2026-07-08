@@ -8,7 +8,7 @@ const modulesAvailable = {
     { title: 'Facilities', desc: 'Browse all facilities in the network', path: '/dashboard?tab=facilities', iconClass: 'fa-solid fa-hospital' },
     { title: 'Feedback', desc: 'Clinical outcomes from receiving centers', path: '/dashboard?tab=feedback', iconClass: 'fa-solid fa-notes-medical' },
   ],
-  admin: [
+  receptionist: [
     { title: 'Referrals', desc: 'Manage all facility referrals', path: '/dashboard?tab=referrals', iconClass: 'fa-solid fa-file-medical' },
     { title: 'Patients', desc: 'Review patient records connected to your facility', path: '/dashboard?tab=patients', iconClass: 'fa-solid fa-user-injured' },
     { title: 'Facilities', desc: 'Facility network overview', path: '/dashboard?tab=facilities', iconClass: 'fa-solid fa-hospital' },
@@ -26,13 +26,13 @@ const modulesAvailable = {
 
 const roleDescriptions = {
   co: 'As a CO, you submit patient referrals, monitor referral progress, and review clinical feedback from receiving facilities.',
-  admin: 'As a Hospital Admin, you manage facility referrals, accept or reroute transfers, and oversee feedback within your facility.',
+  receptionist: 'As a Receptionist, you coordinate incoming referrals for your facility, liaise with department clinicians, and record clinical feedback when available.',
   moh: 'As a Ministry of Health official, you monitor referrals at the national level and track facility performance across regions.',
 };
 
 const roleLabels = {
   co: 'CO',
-  admin: 'Hospital Admin',
+  receptionist: 'Receptionist',
   moh: 'MOH Official',
 };
 

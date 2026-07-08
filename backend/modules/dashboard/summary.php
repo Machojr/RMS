@@ -28,7 +28,7 @@ if ($user['role'] === 'moh') {
     $referralSql = "SELECT COUNT(*) AS total, SUM(status = 'pending') AS pending FROM referrals";
     $refFacilitySql = "SELECT COUNT(*) AS total FROM facilities";
     $userSql = "SELECT COUNT(*) AS total FROM users WHERE is_active = TRUE";
-} elseif ($user['role'] === 'admin') {
+} elseif ($user['role'] === 'receptionist') {
     $referralSql = "SELECT COUNT(*) AS total, SUM(status = 'pending') AS pending
         FROM referrals r
         JOIN users u ON r.referring_co_id = u.id
@@ -42,7 +42,7 @@ if ($user['role'] === 'moh') {
 }
 
 $stmt = $conn->prepare($referralSql);
-if ($user['role'] === 'admin') {
+if ($user['role'] === 'receptionist') {
     $stmt->bind_param('i', $user['facility_id']);
 } elseif ($user['role'] === 'co') {
     $stmt->bind_param('i', $user['id']);
@@ -62,7 +62,7 @@ $facilitiesCount = (int)$result->fetch_assoc()['total'];
 $stmt->close();
 
 $stmt = $conn->prepare($userSql);
-if ($user['role'] === 'admin') {
+if ($user['role'] === 'receptionist') {
     $stmt->bind_param('i', $user['facility_id']);
 } elseif ($user['role'] === 'co') {
     $stmt->bind_param('i', $user['id']);
