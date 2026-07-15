@@ -164,7 +164,6 @@ export default function Dashboard() {
     age_years: '',
     receiving_facility_id: '',
     receiving_department_id: '',
-    assigned_doctor_id: '',
     region: '',
     district: '',
     transfer_date: '',
@@ -184,19 +183,9 @@ export default function Dashboard() {
   });
   const [departments, setDepartments] = useState([]);
   const [doctors, setDoctors] = useState([]);
-  const [referralDoctors, setReferralDoctors] = useState([]);
   const [referralMessage, setReferralMessage] = useState('');
   const [submittingReferral, setSubmittingReferral] = useState(false);
   const [selectedReferral, setSelectedReferral] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [messageRecipients, setMessageRecipients] = useState([]);
-  const [messageForm, setMessageForm] = useState({ recipient_id: '', message: '' });
-  const [sendingMessage, setSendingMessage] = useState(false);
-  const [messageError, setMessageError] = useState('');
-  const [loadingMessages, setLoadingMessages] = useState(false);
-  const [assigningDoctor, setAssigningDoctor] = useState(false);
-  const [assignmentMessage, setAssignmentMessage] = useState('');
-  const [selectedDoctorIdForAssignment, setSelectedDoctorIdForAssignment] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -410,7 +399,7 @@ export default function Dashboard() {
       fetchFeedback();
     }
 
-    if (activeTab === 'feedback' && referrals.length === 0 && summary?.user?.role === 'receptionist') {
+    if (activeTab === 'feedback' && referrals.length === 0 && ['co', 'receptionist'].includes(summary?.user?.role)) {
       fetchReferrals();
     }
 
@@ -587,7 +576,6 @@ export default function Dashboard() {
           age_years: '',
           receiving_facility_id: '',
           receiving_department_id: '',
-          assigned_doctor_id: '',
           region: '',
           district: '',
           transfer_date: '',
@@ -636,142 +624,6 @@ export default function Dashboard() {
       setActionError('Unable to reach update service.');
     }
     setActionProcessing(null);
-  };
-
-  const loadMessagesForReferral = async (referralId) => {
-    setLoadingMessages(true);
-    try {
-      const response = await fetch(apiUrl(`/communications/list.php?referral_id=${referralId}`), {
-        method: 'GET',
-        credentials: 'include',
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        setMessages(data.messages);
-      } else {
-        setMessages([]);
-      }
-    } catch (err) {
-      setMessages([]);
-    }
-    setLoadingMessages(false);
-  };
-
-  const loadReferralDoctors = async (referral) => {
-    if (!referral?.receiving_facility_id) {
-      setReferralDoctors([]);
-      return;
-    }
-
-    const query = `facility_id=${referral.receiving_facility_id}${referral.receiving_department_id ? `&department_id=${referral.receiving_department_id}` : ''}`;
-    try {
-      const response = await fetch(apiUrl(`/doctors/list.php?${query}`), {
-        method: 'GET',
-        credentials: 'include',
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        setReferralDoctors(data.doctors);
-      } else {
-        setReferralDoctors([]);
-      }
-    } catch (err) {
-      setReferralDoctors([]);
-    }
-  };
-
-  const loadMessageRecipients = (referral) => {
-    if (!referral) {
-      setMessageRecipients([]);
-      return;
-    }
-
-    const recipients = referralDoctors.map((doctor) => ({
-      id: doctor.user_id,
-      label: `Doctor: ${doctor.full_name} (${doctor.department_name})`,
-    }));
-
-    setMessageRecipients(recipients);
-  };
-
-  useEffect(() => {
-    if (!selectedReferral) {
-      setMessages([]);
-      setMessageRecipients([]);
-      setMessageForm({ recipient_id: '', message: '' });
-      setMessageError('');
-      setReferralDoctors([]);
-      setSelectedDoctorIdForAssignment('');
-      setAssignmentMessage('');
-      return;
-    }
-
-    loadMessagesForReferral(selectedReferral.id);
-    loadReferralDoctors(selectedReferral);
-  }, [selectedReferral, summary?.user?.role]);
-
-  useEffect(() => {
-    if (selectedReferral) {
-      loadMessageRecipients(selectedReferral);
-    }
-  }, [selectedReferral, referralDoctors]);
-
-  const sendMessage = async (event) => {
-    event.preventDefault();
-    setSendingMessage(true);
-    setMessageError('');
-
-    try {
-      const response = await fetch(apiUrl('/communications/create.php'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          referral_id: selectedReferral.id,
-          recipient_id: messageForm.recipient_id,
-          message: messageForm.message,
-        }),
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        setMessageForm({ recipient_id: '', message: '' });
-        await loadMessagesForReferral(selectedReferral.id);
-      } else {
-        setMessageError(data.error || 'Unable to send message.');
-      }
-    } catch (err) {
-      setMessageError('Unable to reach communications service.');
-    }
-    setSendingMessage(false);
-  };
-
-  const assignDoctorToReferral = async (referralId) => {
-    if (!selectedDoctorIdForAssignment) {
-      setAssignmentMessage('Please choose a doctor to assign.');
-      return;
-    }
-
-    setAssigningDoctor(true);
-    setAssignmentMessage('');
-    try {
-      const response = await fetch(apiUrl('/referrals/assign_doctor.php'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referral_id: referralId, doctor_id: selectedDoctorIdForAssignment }),
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        setAssignmentMessage('Doctor assigned successfully. Refreshing referral...');
-        setSelectedReferral(null);
-        setReferrals([]);
-      } else {
-        setAssignmentMessage(data.error || 'Unable to assign doctor.');
-      }
-    } catch (err) {
-      setAssignmentMessage('Unable to reach assign doctor service.');
-    }
-    setAssigningDoctor(false);
   };
 
   const sendNotification = async (event) => {
@@ -1130,7 +982,6 @@ export default function Dashboard() {
                             ...prev,
                             [e.target.name]: e.target.value,
                             receiving_department_id: '',
-                            assigned_doctor_id: '',
                           }))}
                           required
                           className="form-input"
@@ -1153,7 +1004,6 @@ export default function Dashboard() {
                           onChange={(e) => setReferralForm((prev) => ({
                             ...prev,
                             [e.target.name]: e.target.value,
-                            assigned_doctor_id: '',
                           }))}
                           required
                           className="form-input"
@@ -1167,6 +1017,7 @@ export default function Dashboard() {
                           ))}
                         </select>
                       </div>
+                      {false && (
                       <div className="form-field">
                         <span>Assign doctor (optional)</span>
                         <select
@@ -1184,6 +1035,7 @@ export default function Dashboard() {
                           ))}
                         </select>
                       </div>
+                      )}
                       <div className="form-field">
                         <span>Urgency</span>
                         <select
@@ -1403,9 +1255,9 @@ export default function Dashboard() {
             <p className="dashboard-message dashboard-error">{sectionErrors.feedback}</p>
           ) : (
             <div className="grid-card feedback-grid">
-              {summary?.user?.role === 'receptionist' && (
+              {['co', 'receptionist'].includes(summary?.user?.role) && (
                 <div className="feedback-card" style={{ marginBottom: '1.5rem' }}>
-                  <h3>Submit Clinical Feedback</h3>
+                  <h3>Feedback Conversation</h3>
                   <form onSubmit={submitFeedback}>
                     <div className="form-field">
                       <span>Referral</span>
@@ -1873,6 +1725,8 @@ export default function Dashboard() {
                 <span>Receiving department</span>
                 <p>{selectedReferral.receiving_department || 'Not provided'}</p>
               </div>
+              {false && (
+              <>
               <div className="referral-detail-block">
                 <span>Assigned doctor</span>
                 <p>{selectedReferral.assigned_doctor_name || 'Not assigned'}</p>
@@ -1977,6 +1831,8 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+              </>
+              )}
             </div>
           </section>
         </div>

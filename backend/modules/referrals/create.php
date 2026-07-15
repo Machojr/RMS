@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/../../config/db.php';
 require_once dirname(__DIR__, 2) . '/includes/session.php';
+require_once dirname(__DIR__, 2) . '/includes/notifications.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     sendError('Method not allowed', 405);
@@ -47,7 +48,7 @@ $patientNumber = !empty($input['patient_number']) ? trim($input['patient_number'
 $ageYears = !empty($input['age_years']) ? trim($input['age_years']) : null;
 $receivingFacilityId = (int) $input['receiving_facility_id'];
 $receivingDepartmentId = isset($input['receiving_department_id']) ? (int)$input['receiving_department_id'] : null;
-$assignedDoctorId = isset($input['assigned_doctor_id']) ? (int)$input['assigned_doctor_id'] : null;
+$assignedDoctorId = null;
 $region = !empty($input['region']) ? trim($input['region']) : null;
 $district = !empty($input['district']) ? trim($input['district']) : null;
 $transferDate = !empty($input['transfer_date']) ? trim($input['transfer_date']) : null;
@@ -171,9 +172,14 @@ if (!$success) {
 $referralId = $stmt->insert_id;
 $stmt->close();
 
+$receptionistNotified = notifyReceivingReceptionistOfReferral($conn, $referralId);
+
 sendResponse([
     'success' => true,
-    'message' => 'Referral created successfully',
+    'message' => $receptionistNotified
+        ? 'Referral created successfully and receiving receptionist was notified'
+        : 'Referral created successfully, but receiving receptionist email notification was not sent',
     'referral_id' => $referralId,
+    'receptionist_notified' => $receptionistNotified,
 ]);
 ?>

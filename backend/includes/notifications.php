@@ -216,4 +216,71 @@ function notifyFeedbackCreated($conn, $referralId, $recipientEmail, $recipientPh
     }
     return $saved;
 }
+
+function notifyReceivingReceptionistOfReferral($conn, $referralId) {
+    $stmt = $conn->prepare(
+        'SELECT
+            r.id,
+            r.urgency,
+            r.clinical_reason,
+            p.first_name AS patient_first_name,
+            p.last_name AS patient_last_name,
+            rf.name AS referring_facility,
+            tf.name AS receiving_facility,
+            sender.id AS sender_user_id,
+            sender.first_name AS sender_first_name,
+            sender.last_name AS sender_last_name,
+            receptionist.id AS receptionist_user_id,
+            receptionist.email AS receptionist_email,
+            receptionist.phone AS receptionist_phone
+         FROM referrals r
+         JOIN patients p ON r.patient_id = p.id
+         JOIN facilities rf ON r.referring_facility_id = rf.id
+         JOIN facilities tf ON r.receiving_facility_id = tf.id
+         JOIN users sender ON r.referring_co_id = sender.id
+         JOIN users receptionist ON receptionist.facility_id = r.receiving_facility_id
+            AND receptionist.role = "receptionist"
+            AND receptionist.is_active = 1
+         WHERE r.id = ?
+         ORDER BY receptionist.id ASC
+         LIMIT 1'
+    );
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param('i', $referralId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $detail = $result->fetch_assoc();
+    $stmt->close();
+
+    if (!$detail || empty($detail['receptionist_email'])) {
+        return false;
+    }
+
+    $patientName = trim($detail['patient_first_name'] . ' ' . $detail['patient_last_name']);
+    $senderName = trim($detail['sender_first_name'] . ' ' . $detail['sender_last_name']);
+    $subject = "New referral #{$referralId} received";
+    $message = "A new referral has been sent to {$detail['receiving_facility']}.\n\n";
+    $message .= "Referral: #{$referralId}\n";
+    $message .= "Patient: {$patientName}\n";
+    $message .= "From: {$detail['referring_facility']}\n";
+    $message .= "Sent by: {$senderName}\n";
+    $message .= "Urgency: {$detail['urgency']}\n";
+    $message .= "Clinical reason: {$detail['clinical_reason']}\n\n";
+    $message .= "Please review this referral in the Feedback section and continue communication there.";
+
+    return createNotification(
+        $conn,
+        $referralId,
+        $detail['receptionist_email'],
+        $detail['receptionist_phone'],
+        $subject,
+        $message,
+        'email',
+        'pending',
+        (int)$detail['sender_user_id'],
+        (int)$detail['receptionist_user_id']
+    );
+}
 ?>

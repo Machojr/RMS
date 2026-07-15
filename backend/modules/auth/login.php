@@ -47,8 +47,13 @@ if ($result->num_rows === 0) {
 
 $user = $result->fetch_assoc();
 
-// Verify password (plain text for now - will hash later)
-if ($password !== $user['password']) {
+// Verify password. Support modern hashed passwords and older seeded plain-text accounts.
+$storedPassword = $user['password'];
+$passwordMatches = password_get_info($storedPassword)['algo'] !== 0
+    ? password_verify($password, $storedPassword)
+    : hash_equals($storedPassword, $password);
+
+if (!$passwordMatches) {
     sendError('Invalid email or password', 401);
 }
 

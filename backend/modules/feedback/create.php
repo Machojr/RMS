@@ -35,21 +35,30 @@ $dischargeSummary = trim($input['discharge_summary'] ?? '');
 $followUpInstructions = trim($input['follow_up_instructions'] ?? '');
 
 $user = getCurrentUser();
-if ($user['role'] !== 'receptionist' && $user['role'] !== 'moh') {
-    sendError('Only Receptionist or MoH can submit feedback', 403);
+if (!in_array($user['role'], ['co', 'receptionist', 'moh'], true)) {
+    sendError('Only CO, Receptionist or MoH can submit feedback', 403);
 }
 
-// Verify referral access for Receptionists
 if ($user['role'] === 'receptionist') {
     $stmt = $conn->prepare('SELECT id FROM referrals WHERE id = ? AND receiving_facility_id = ?');
     $stmt->bind_param('ii', $referralId, $user['facility_id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows === 0) {
-        sendError('Referral not found or access denied', 403);
-    }
-    $stmt->close();
+} elseif ($user['role'] === 'co') {
+    $stmt = $conn->prepare('SELECT id FROM referrals WHERE id = ? AND referring_co_id = ?');
+    $stmt->bind_param('ii', $referralId, $user['id']);
+} else {
+    $stmt = $conn->prepare('SELECT id FROM referrals WHERE id = ?');
+    $stmt->bind_param('i', $referralId);
 }
+
+if (!$stmt) {
+    sendError('Database error preparing referral access check', 500);
+}
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result->num_rows === 0) {
+    sendError('Referral not found or access denied', 403);
+}
+$stmt->close();
 
 $stmt = $conn->prepare(
     'INSERT INTO feedback (
@@ -80,13 +89,25 @@ if (!$stmt->execute()) {
 }
 $stmt->close();
 
-// Notify referring CO about the new feedback
 $detailStmt = $conn->prepare(
-    'SELECT p.first_name AS patient_first_name, p.last_name AS patient_last_name, u.email AS referrer_email, u.phone AS referrer_phone
+    'SELECT
+        p.first_name AS patient_first_name,
+        p.last_name AS patient_last_name,
+        referrer.id AS referrer_user_id,
+        referrer.email AS referrer_email,
+        referrer.phone AS referrer_phone,
+        receptionist.id AS receptionist_user_id,
+        receptionist.email AS receptionist_email,
+        receptionist.phone AS receptionist_phone
      FROM referrals r
      JOIN patients p ON r.patient_id = p.id
-     JOIN users u ON r.referring_co_id = u.id
-     WHERE r.id = ?'
+     JOIN users referrer ON r.referring_co_id = referrer.id
+     LEFT JOIN users receptionist ON receptionist.facility_id = r.receiving_facility_id
+        AND receptionist.role = "receptionist"
+        AND receptionist.is_active = 1
+     WHERE r.id = ?
+     ORDER BY receptionist.id ASC
+     LIMIT 1'
 );
 $detailStmt->bind_param('i', $referralId);
 $detailStmt->execute();
@@ -94,13 +115,33 @@ $detailResult = $detailStmt->get_result();
 $detail = $detailResult->fetch_assoc();
 $detailStmt->close();
 
-if ($detail) {
-    notifyFeedbackCreated(
+$patientName = $detail ? trim($detail['patient_first_name'] . ' ' . $detail['patient_last_name']) : '';
+$senderName = trim($user['first_name'] . ' ' . $user['last_name']);
+if ($detail && $user['role'] === 'receptionist') {
+    createNotification(
         $conn,
         $referralId,
         $detail['referrer_email'],
         $detail['referrer_phone'],
-        trim($detail['patient_first_name'] . ' ' . $detail['patient_last_name'])
+        'Feedback message received',
+        "Feedback message from {$senderName} for referral #{$referralId} ({$patientName}).\n\n{$clinicalOutcome}",
+        'email',
+        'pending',
+        $user['id'],
+        (int)$detail['referrer_user_id']
+    );
+} elseif ($detail && $user['role'] === 'co' && !empty($detail['receptionist_email'])) {
+    createNotification(
+        $conn,
+        $referralId,
+        $detail['receptionist_email'],
+        $detail['receptionist_phone'],
+        'Feedback message received',
+        "Feedback message from {$senderName} for referral #{$referralId} ({$patientName}).\n\n{$clinicalOutcome}",
+        'email',
+        'pending',
+        $user['id'],
+        (int)$detail['receptionist_user_id']
     );
 }
 
