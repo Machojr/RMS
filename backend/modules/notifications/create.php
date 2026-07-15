@@ -26,9 +26,10 @@ if (!$input) {
     sendError('Invalid JSON input');
 }
 
-validateRequired($input, ['referral_id', 'recipient_doctor_id', 'notification_type']);
+validateRequired($input, ['referral_id', 'department_id', 'recipient_doctor_id', 'notification_type']);
 
 $referralId = (int)$input['referral_id'];
+$departmentId = (int)$input['department_id'];
 $recipientDoctorId = (int)$input['recipient_doctor_id'];
 $notificationType = trim($input['notification_type']);
 $note = isset($input['note']) ? trim($input['note']) : null;
@@ -54,9 +55,9 @@ if ($referralResult->num_rows === 0) {
 $referral = $referralResult->fetch_assoc();
 $referralStmt->close();
 
-// ensure recipient is a doctor in the referral receiving department and facility
+// ensure recipient is a doctor in the selected department and receiving facility
 $recipientStmt = $conn->prepare(
-    'SELECT u.email, u.phone, u.first_name, u.last_name, dep.name AS department_name
+    'SELECT u.id AS user_id, u.email, u.phone, u.first_name, u.last_name, dep.name AS department_name
      FROM doctors doc
      JOIN users u ON doc.user_id = u.id
      JOIN departments dep ON doc.department_id = dep.id
@@ -64,7 +65,7 @@ $recipientStmt = $conn->prepare(
        AND doc.department_id = ?
        AND dep.facility_id = ?'
 );
-$recipientStmt->bind_param('iii', $recipientDoctorId, $referral['receiving_department_id'], $referral['receiving_facility_id']);
+$recipientStmt->bind_param('iii', $recipientDoctorId, $departmentId, $referral['receiving_facility_id']);
 $recipientStmt->execute();
 $recipientResult = $recipientStmt->get_result();
 if ($recipientResult->num_rows === 0) {
@@ -72,6 +73,24 @@ if ($recipientResult->num_rows === 0) {
 }
 $recipient = $recipientResult->fetch_assoc();
 $recipientStmt->close();
+
+$recipientEmail = strtolower(trim($recipient['email'] ?? ''));
+if (($notificationType === 'email' || $notificationType === 'both')
+    && ($recipientEmail === '' || substr($recipientEmail, -10) === '@rms.go.tz')
+) {
+    sendError('Selected doctor must have a real email address before email notifications can be sent', 400);
+}
+
+$assignStmt = $conn->prepare(
+    'UPDATE referrals
+     SET receiving_department_id = ?, assigned_doctor_id = ?
+     WHERE id = ? AND receiving_facility_id = ?'
+);
+$assignStmt->bind_param('iiii', $departmentId, $recipientDoctorId, $referralId, $referral['receiving_facility_id']);
+if (!$assignStmt->execute()) {
+    sendError('Unable to assign notification department and doctor to referral', 500);
+}
+$assignStmt->close();
 
 $patientName = trim($referral['patient_first_name'] . ' ' . $referral['patient_last_name']);
 $subject = "Referral #{$referralId} notification";
@@ -96,7 +115,9 @@ if ($notificationType === 'email' || $notificationType === 'both') {
             $subject,
             $message,
             'email',
-            'pending'
+            'pending',
+            $user['id'],
+            $recipient['user_id']
         ) || $created;
     }
 }
@@ -110,7 +131,9 @@ if ($notificationType === 'sms' || $notificationType === 'both') {
             $subject,
             $message,
             'sms',
-            'pending'
+            'pending',
+            $user['id'],
+            $recipient['user_id']
         ) || $created;
     }
 }

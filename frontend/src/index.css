@@ -282,6 +282,12 @@ button {
   color: #166534;
 }
 
+.field-hint {
+  margin: 0.5rem 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
 @media (min-width: 900px) {
   .login-card-grid {
     grid-template-columns: 1.1fr 0.9fr;
@@ -711,6 +717,12 @@ button {
 
 .type-email { background: rgba(16, 185, 129, 0.12); color: #0f766e; }
 .type-sms { background: rgba(132, 204, 22, 0.14); color: #4d7c0f; }
+
+.notification-reply {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
 
 .highlight-card {
   background: linear-gradient(135deg, rgba(74, 222, 128, 0.14), rgba(16, 185, 129, 0.15));

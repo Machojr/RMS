@@ -90,6 +90,18 @@ try {
             require_once __DIR__ . '/modules/patients/' . $path_segments[1] . '.php';
             break;
 
+        case 'departments':
+            require_once __DIR__ . '/modules/departments/' . $path_segments[1] . '.php';
+            break;
+
+        case 'doctors':
+            require_once __DIR__ . '/modules/doctors/' . $path_segments[1] . '.php';
+            break;
+
+        case 'communications':
+            require_once __DIR__ . '/modules/communications/' . $path_segments[1] . '.php';
+            break;
+
         default:
             http_response_code(404);
             echo json_encode(['error' => 'API endpoint not found']);

@@ -127,6 +127,14 @@ export default function Dashboard() {
   const [notificationError, setNotificationError] = useState('');
   const [notificationDepartments, setNotificationDepartments] = useState([]);
   const [notificationDoctors, setNotificationDoctors] = useState([]);
+  const [loadingNotificationDepartments, setLoadingNotificationDepartments] = useState(false);
+  const [loadingNotificationDoctors, setLoadingNotificationDoctors] = useState(false);
+  const [replyingNotificationId, setReplyingNotificationId] = useState(null);
+  const [notificationReplyText, setNotificationReplyText] = useState('');
+  const [notificationReplyMessage, setNotificationReplyMessage] = useState('');
+  const [sendingNotificationReply, setSendingNotificationReply] = useState(false);
+  const [notificationDecisionProcessing, setNotificationDecisionProcessing] = useState(null);
+  const [notificationDecisionMessage, setNotificationDecisionMessage] = useState('');
   const [feedbackForm, setFeedbackForm] = useState({
     referral_id: '',
     department: '',
@@ -406,53 +414,66 @@ export default function Dashboard() {
       fetchReferrals();
     }
 
-    if (activeTab === 'notifications' && notifications.length === 0) {
-      fetchNotifications();
+    if (activeTab === 'notifications') {
+      if (notifications.length === 0) {
+        fetchNotifications();
+      }
+      if (referrals.length === 0 && summary?.user?.role === 'receptionist') {
+        fetchReferrals();
+      }
     }
   }, [activeTab, referrals.length, patients.length, facilities.length, feedbackItems.length, notifications.length, summary?.user?.role]);
 
   useEffect(() => {
     async function fetchNotificationDepartments(referralId) {
-      if (!referralId) {
+      const referral = referralId ? referrals.find((item) => item.id === Number(referralId)) : null;
+      const facilityId = referral?.receiving_facility_id || summary?.user?.facility_id;
+      if (!facilityId) {
         setNotificationDepartments([]);
         setNotificationDoctors([]);
+        setLoadingNotificationDepartments(false);
         return;
       }
 
-      const referral = referrals.find((item) => item.id === Number(referralId));
-      if (!referral) {
-        setNotificationDepartments([]);
-        setNotificationDoctors([]);
-        return;
-      }
-
+      setLoadingNotificationDepartments(true);
+      setNotificationError('');
       try {
-        const response = await fetch(apiUrl(`/departments/list.php?facility_id=${referral.receiving_facility_id}`), {
+        const response = await fetch(apiUrl(`/departments/list.php?facility_id=${facilityId}`), {
           method: 'GET',
           credentials: 'include',
         });
         const data = await response.json();
         if (response.ok && data.success) {
           setNotificationDepartments(data.departments);
+          if (data.departments.length === 0) {
+            setNotificationError('No departments are configured for the receiving facility.');
+          }
         } else {
           setNotificationDepartments([]);
+          setNotificationError(data.error || 'Unable to load departments.');
         }
       } catch (err) {
         setNotificationDepartments([]);
+        setNotificationError('Unable to reach departments service.');
+      } finally {
+        setLoadingNotificationDepartments(false);
       }
       setNotificationDoctors([]);
     }
 
     fetchNotificationDepartments(notificationForm.referral_id);
-  }, [notificationForm.referral_id, referrals]);
+  }, [notificationForm.referral_id, referrals, summary?.user?.facility_id]);
 
   useEffect(() => {
     async function fetchNotificationDoctors(facilityId, departmentId) {
       if (!facilityId || !departmentId) {
         setNotificationDoctors([]);
+        setLoadingNotificationDoctors(false);
         return;
       }
 
+      setLoadingNotificationDoctors(true);
+      setNotificationError('');
       try {
         const response = await fetch(apiUrl(`/doctors/list.php?facility_id=${facilityId}&department_id=${departmentId}`), {
           method: 'GET',
@@ -461,21 +482,29 @@ export default function Dashboard() {
         const data = await response.json();
         if (response.ok && data.success) {
           setNotificationDoctors(data.doctors);
+          if (data.doctors.length === 0) {
+            setNotificationError('No doctors are configured for the selected department.');
+          }
         } else {
           setNotificationDoctors([]);
+          setNotificationError(data.error || 'Unable to load doctors.');
         }
       } catch (err) {
         setNotificationDoctors([]);
+        setNotificationError('Unable to reach doctors service.');
+      } finally {
+        setLoadingNotificationDoctors(false);
       }
     }
 
     const referral = referrals.find((item) => item.id === Number(notificationForm.referral_id));
-    if (referral && notificationForm.department_id) {
-      fetchNotificationDoctors(referral.receiving_facility_id, notificationForm.department_id);
+    const facilityId = referral?.receiving_facility_id || summary?.user?.facility_id;
+    if (facilityId && notificationForm.department_id) {
+      fetchNotificationDoctors(facilityId, notificationForm.department_id);
     } else {
       setNotificationDoctors([]);
     }
-  }, [notificationForm.department_id, notificationForm.referral_id, referrals]);
+  }, [notificationForm.department_id, notificationForm.referral_id, referrals, summary?.user?.facility_id]);
 
   useEffect(() => {
     async function fetchDepartments(facilityId) {
@@ -557,6 +586,8 @@ export default function Dashboard() {
           patient_number: '',
           age_years: '',
           receiving_facility_id: '',
+          receiving_department_id: '',
+          assigned_doctor_id: '',
           region: '',
           district: '',
           transfer_date: '',
@@ -745,9 +776,23 @@ export default function Dashboard() {
 
   const sendNotification = async (event) => {
     event.preventDefault();
-    setSendingNotification(true);
     setNotificationMessage('');
     setNotificationError('');
+
+    if (!notificationForm.referral_id) {
+      setNotificationError('Please select a referral first.');
+      return;
+    }
+    if (!notificationForm.department_id) {
+      setNotificationError('Please select the receiving department.');
+      return;
+    }
+    if (!notificationForm.recipient_doctor_id) {
+      setNotificationError('Please select the doctor to notify.');
+      return;
+    }
+
+    setSendingNotification(true);
 
     try {
       const response = await fetch(apiUrl('/notifications/create.php'), {
@@ -775,6 +820,82 @@ export default function Dashboard() {
     }
 
     setSendingNotification(false);
+  };
+
+  const sendNotificationReply = async (event) => {
+    event.preventDefault();
+    setNotificationReplyMessage('');
+
+    if (!replyingNotificationId) {
+      setNotificationReplyMessage('Please choose a notification to reply to.');
+      return;
+    }
+    if (!notificationReplyText.trim()) {
+      setNotificationReplyMessage('Reply message cannot be empty.');
+      return;
+    }
+
+    setSendingNotificationReply(true);
+    try {
+      const response = await fetch(apiUrl('/notifications/reply.php'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notification_id: replyingNotificationId,
+          message: notificationReplyText,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setNotificationReplyMessage('Reply sent successfully.');
+        setNotificationReplyText('');
+        setReplyingNotificationId(null);
+        setNotifications([]);
+      } else {
+        setNotificationReplyMessage(data.error || 'Unable to send reply.');
+      }
+    } catch (err) {
+      setNotificationReplyMessage('Unable to reach notification reply service.');
+    }
+    setSendingNotificationReply(false);
+  };
+
+  const respondToReferralNotification = async (notificationId, decision) => {
+    setNotificationDecisionMessage('');
+    let reason = '';
+    if (decision === 'rejected') {
+      reason = window.prompt('Enter rejection reason:') || '';
+      if (!reason.trim()) {
+        setNotificationDecisionMessage('Rejection reason is required.');
+        return;
+      }
+    }
+
+    setNotificationDecisionProcessing(notificationId);
+    try {
+      const response = await fetch(apiUrl('/notifications/respond.php'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notification_id: notificationId,
+          decision,
+          reason,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setNotificationDecisionMessage(data.message || 'Referral response sent successfully.');
+        setNotifications([]);
+        setReferrals([]);
+      } else {
+        setNotificationDecisionMessage(data.error || data.message || 'Unable to send referral response.');
+      }
+    } catch (err) {
+      setNotificationDecisionMessage('Unable to reach referral response service.');
+    }
+    setNotificationDecisionProcessing(null);
   };
 
   const submitFeedback = async (event) => {
@@ -837,6 +958,10 @@ export default function Dashboard() {
     });
     window.location.href = '/';
   };
+
+  const notificationConversations = notifications.filter(
+    (item) => item.sender_user_id || item.recipient_user_id || item.reply_to_notification_id,
+  );
 
   return (
     <main className="container dashboard-page">
@@ -1447,12 +1572,18 @@ export default function Dashboard() {
                         className="form-input"
                         required
                       >
-                        <option value="">Select referral</option>
-                        {referrals.map((ref) => (
-                          <option key={ref.id} value={ref.id}>
-                            #{ref.id} - {ref.patient_name} to {ref.receiving_facility}
-                          </option>
-                        ))}
+                        <option value="">
+                          {referrals.filter((ref) => Number(ref.receiving_facility_id) === Number(summary?.user?.facility_id)).length === 0
+                            ? 'No received referrals available'
+                            : 'Select referral'}
+                        </option>
+                        {referrals
+                          .filter((ref) => Number(ref.receiving_facility_id) === Number(summary?.user?.facility_id))
+                          .map((ref) => (
+                            <option key={ref.id} value={ref.id}>
+                              #{ref.id} - {ref.patient_name} to {ref.receiving_facility}
+                            </option>
+                          ))}
                       </select>
                     </div>
                     <div className="form-field">
@@ -1463,15 +1594,24 @@ export default function Dashboard() {
                         onChange={(e) => setNotificationForm((prev) => ({ ...prev, department_id: e.target.value, recipient_doctor_id: '' }))}
                         className="form-input"
                         required
-                        disabled={!notificationForm.referral_id || notificationDepartments.length === 0}
+                        disabled={loadingNotificationDepartments}
                       >
-                        <option value="">Select department</option>
+                        <option value="">
+                          {loadingNotificationDepartments
+                              ? 'Loading departments...'
+                              : notificationDepartments.length === 0
+                                ? 'No departments available'
+                                : 'Select department'}
+                        </option>
                         {notificationDepartments.map((dept) => (
                           <option key={dept.id} value={dept.id}>
                             {dept.name}
                           </option>
                         ))}
                       </select>
+                      {!loadingNotificationDepartments && notificationDepartments.length === 0 && (
+                        <p className="field-hint">No departments found for your facility.</p>
+                      )}
                     </div>
                     <div className="form-field">
                       <span>Doctor</span>
@@ -1481,15 +1621,27 @@ export default function Dashboard() {
                         onChange={(e) => setNotificationForm((prev) => ({ ...prev, recipient_doctor_id: e.target.value }))}
                         className="form-input"
                         required
-                        disabled={!notificationForm.department_id || notificationDoctors.length === 0}
+                        disabled={!notificationForm.department_id || loadingNotificationDoctors}
                       >
-                        <option value="">Select doctor</option>
+                        <option value="">
+                          {!notificationForm.department_id
+                            ? 'Select department first'
+                            : loadingNotificationDoctors
+                              ? 'Loading doctors...'
+                              : notificationDoctors.length === 0
+                                ? 'No doctors available'
+                                : 'Select doctor'}
+                        </option>
                         {notificationDoctors.map((doctor) => (
                           <option key={doctor.id} value={doctor.id}>
-                            {doctor.full_name}
+                            {doctor.full_name} - {doctor.department_name} - {doctor.email || 'No email'}
+                            {doctor.has_real_email ? '' : ' (test email)'}
                           </option>
                         ))}
                       </select>
+                      {notificationForm.department_id && !loadingNotificationDoctors && notificationDoctors.length === 0 && (
+                        <p className="field-hint">No doctors found for this department.</p>
+                      )}
                     </div>
                     <div className="form-field">
                       <span>Notification type</span>
@@ -1520,7 +1672,7 @@ export default function Dashboard() {
                     {notificationMessage && (
                       <p className="dashboard-message">{notificationMessage}</p>
                     )}
-                    <button type="submit" className="button" disabled={sendingNotification || !notificationForm.referral_id || !notificationForm.department_id || !notificationForm.recipient_doctor_id}>
+                    <button type="submit" className="button" disabled={sendingNotification || loadingNotificationDepartments || loadingNotificationDoctors}>
                       {sendingNotification ? 'Sending...' : 'Send notification'}
                     </button>
                   </form>
@@ -1528,10 +1680,10 @@ export default function Dashboard() {
               )}
 
               <div className="grid-card notification-grid">
-                {notifications.length === 0 ? (
-                  <p>No notifications available yet.</p>
+                {notificationConversations.length === 0 ? (
+                  <p>No notification conversations available yet.</p>
                 ) : (
-                  notifications.map((item) => (
+                  notificationConversations.map((item) => (
                     <div key={item.id} className="notification-card">
                       <div className="notification-meta">
                         <span className={`notification-type type-${item.type}`}>{item.type.toUpperCase()}</span>
@@ -1539,8 +1691,94 @@ export default function Dashboard() {
                       </div>
                       <p><strong>Subject:</strong> {item.subject}</p>
                       <p><strong>Recipient:</strong> {item.recipient_email || item.recipient_phone}</p>
+                      {item.sender_name && <p><strong>From:</strong> {item.sender_name}</p>}
+                      {item.recipient_name && <p><strong>To:</strong> {item.recipient_name}</p>}
                       <p><strong>Status:</strong> {item.status}</p>
+                      {item.referral_status && <p><strong>Referral status:</strong> {item.referral_status}</p>}
+                      {item.error_message && <p className="dashboard-error"><strong>Email error:</strong> {item.error_message}</p>}
+                      <p><strong>Message:</strong> {item.message}</p>
                       {item.referral_id && <p><strong>Referral:</strong> #{item.referral_id} ({item.patient_name})</p>}
+                      {item.rejection_reason && <p><strong>Rejection reason:</strong> {item.rejection_reason}</p>}
+                      {item.can_decide_referral && (
+                        <div className="notification-reply">
+                          {notificationDecisionMessage && (
+                            <p className={notificationDecisionMessage.includes('success') ? 'dashboard-message' : 'dashboard-message dashboard-error'}>
+                              {notificationDecisionMessage}
+                            </p>
+                          )}
+                          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              className="button"
+                              disabled={notificationDecisionProcessing === item.id}
+                              onClick={() => respondToReferralNotification(item.id, 'accepted')}
+                            >
+                              <i className="fa-solid fa-check" aria-hidden="true"></i>
+                              {notificationDecisionProcessing === item.id ? 'Sending...' : 'Accept Referral'}
+                            </button>
+                            <button
+                              type="button"
+                              className="button-secondary"
+                              disabled={notificationDecisionProcessing === item.id}
+                              onClick={() => respondToReferralNotification(item.id, 'rejected')}
+                            >
+                              <i className="fa-solid fa-xmark" aria-hidden="true"></i>
+                              Reject Referral
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {item.can_reply && (
+                        <div className="notification-reply">
+                          {replyingNotificationId === item.id ? (
+                            <form onSubmit={sendNotificationReply} className="login-form">
+                              <div className="form-field">
+                                <span>Reply message</span>
+                                <textarea
+                                  value={notificationReplyText}
+                                  onChange={(e) => setNotificationReplyText(e.target.value)}
+                                  className="form-input"
+                                  rows="3"
+                                  required
+                                />
+                              </div>
+                              {notificationReplyMessage && (
+                                <p className={notificationReplyMessage.includes('success') ? 'dashboard-message' : 'dashboard-message dashboard-error'}>
+                                  {notificationReplyMessage}
+                                </p>
+                              )}
+                              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                <button type="submit" className="button" disabled={sendingNotificationReply}>
+                                  {sendingNotificationReply ? 'Sending...' : 'Send reply'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="button-secondary"
+                                  onClick={() => {
+                                    setReplyingNotificationId(null);
+                                    setNotificationReplyText('');
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
+                            <button
+                              type="button"
+                              className="table-icon-button"
+                              onClick={() => {
+                                setReplyingNotificationId(item.id);
+                                setNotificationReplyText('');
+                                setNotificationReplyMessage('');
+                              }}
+                            >
+                              <i className="fa-solid fa-reply" aria-hidden="true"></i>
+                              Reply
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

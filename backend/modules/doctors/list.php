@@ -58,6 +58,8 @@ $result = $stmt->get_result();
 $doctors = [];
 while ($row = $result->fetch_assoc()) {
     $row['full_name'] = trim($row['first_name'] . ' ' . $row['last_name']);
+    $email = strtolower(trim($row['email'] ?? ''));
+    $row['has_real_email'] = $email !== '' && substr($email, -10) !== '@rms.go.tz';
     $doctors[] = $row;
 }
 $stmt->close();
