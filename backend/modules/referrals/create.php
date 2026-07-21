@@ -7,6 +7,7 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once dirname(__DIR__, 2) . '/includes/session.php';
 require_once dirname(__DIR__, 2) . '/includes/notifications.php';
+require_once dirname(__DIR__, 2) . '/includes/audit.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     sendError('Method not allowed', 405);
@@ -126,7 +127,7 @@ $stmt = $conn->prepare(
         patient_history, chronic_medications, medication_allergies, examination_findings, laboratory_results,
         radiology_results, treatment_before_transfer, reason_for_transfer, doctor_name, doctor_phone, facilitator_phone,
         clinical_reason, clinical_findings, requested_services
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 $stmt->bind_param(
     'issiiiiissssssssssssssssssssssssss',
@@ -173,6 +174,7 @@ $referralId = $stmt->insert_id;
 $stmt->close();
 
 $receptionistNotified = notifyReceivingReceptionistOfReferral($conn, $referralId);
+logAudit($conn, $user, 'referral_created', $referralId, null, 'pending', 'Referral created and sent to receiving facility');
 
 sendResponse([
     'success' => true,

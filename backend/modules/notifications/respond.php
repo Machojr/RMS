@@ -7,6 +7,7 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once dirname(__DIR__, 2) . '/includes/session.php';
 require_once dirname(__DIR__, 2) . '/includes/notifications.php';
+require_once dirname(__DIR__, 2) . '/includes/audit.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     sendError('Method not allowed', 405);
@@ -45,6 +46,7 @@ $stmt = $conn->prepare(
         n.recipient_user_id,
         n.subject,
         r.status AS referral_status,
+        r.doctor_decision,
         r.assigned_doctor_id,
         r.receiving_facility_id,
         p.first_name AS patient_first_name,
@@ -79,18 +81,22 @@ if (!$isAssignedDoctor || !$isRecipient) {
     sendError('Only the assigned doctor can respond to this referral notification', 403);
 }
 
-if (!in_array($notification['referral_status'], ['pending', 'in_progress'], true)) {
-    sendError('This referral has already been decided', 400);
+if ($notification['referral_status'] !== 'pending') {
+    sendError('This referral has already been completed by the receptionist', 400);
 }
 
-$timestampSql = $decision === 'accepted'
-    ? 'accepted_at = NOW(), rejected_at = NULL, rejection_reason = NULL'
-    : 'rejected_at = NOW(), rejection_reason = ?';
-
 if ($decision === 'accepted') {
-    $updateStmt = $conn->prepare("UPDATE referrals SET status = ?, {$timestampSql} WHERE id = ?");
+    $updateStmt = $conn->prepare(
+        'UPDATE referrals
+         SET doctor_decision = ?, doctor_decision_reason = NULL, doctor_decision_by = ?, doctor_decision_at = NOW()
+         WHERE id = ? AND status = "pending" AND doctor_decision = "pending"'
+    );
 } else {
-    $updateStmt = $conn->prepare("UPDATE referrals SET status = ?, {$timestampSql} WHERE id = ?");
+    $updateStmt = $conn->prepare(
+        'UPDATE referrals
+         SET doctor_decision = ?, doctor_decision_reason = ?, doctor_decision_by = ?, doctor_decision_at = NOW()
+         WHERE id = ? AND status = "pending" AND doctor_decision = "pending"'
+    );
 }
 
 if (!$updateStmt) {
@@ -98,21 +104,25 @@ if (!$updateStmt) {
 }
 
 if ($decision === 'accepted') {
-    $updateStmt->bind_param('si', $decision, $notification['referral_id']);
+    $updateStmt->bind_param('sii', $decision, $user['id'], $notification['referral_id']);
 } else {
-    $updateStmt->bind_param('ssi', $decision, $reason, $notification['referral_id']);
+    $updateStmt->bind_param('ssii', $decision, $reason, $user['id'], $notification['referral_id']);
 }
 
 if (!$updateStmt->execute()) {
     sendError('Unable to update referral decision', 500);
+}
+if ($updateStmt->affected_rows === 0) {
+    sendError('This referral already has a doctor decision', 409);
 }
 $updateStmt->close();
 
 $doctorName = trim($user['first_name'] . ' ' . $user['last_name']);
 $patientName = trim($notification['patient_first_name'] . ' ' . $notification['patient_last_name']);
 $decisionLabel = $decision === 'accepted' ? 'accepted' : 'rejected';
-$subject = "Referral #{$notification['referral_id']} {$decisionLabel} by doctor";
-$message = "Doctor {$doctorName} has {$decisionLabel} referral #{$notification['referral_id']} for {$patientName}.";
+$subject = "Doctor decision for referral #{$notification['referral_id']}";
+$message = "Doctor {$doctorName} has {$decisionLabel} referral #{$notification['referral_id']} for {$patientName}.\n\n";
+$message .= "The receptionist must confirm this decision before the final referral status changes.";
 if ($decision === 'rejected') {
     $message .= "\n\nReason: {$reason}";
 }
@@ -135,8 +145,10 @@ if (!$created) {
     sendError('Referral decision saved, but notification back to receptionist failed', 500);
 }
 
+logAudit($conn, $user, 'doctor_referral_decision', (int)$notification['referral_id'], 'pending', 'pending', "Doctor decision: {$decisionLabel}" . ($reason ? ". Reason: {$reason}" : ''));
+
 sendResponse([
     'success' => true,
-    'message' => "Referral {$decisionLabel} successfully",
+    'message' => "Doctor decision saved successfully",
 ]);
 ?>

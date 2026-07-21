@@ -23,6 +23,10 @@ $query = "
         r.patient_number,
         r.age_years,
         r.status,
+        r.rejection_reason,
+        r.doctor_decision,
+        r.doctor_decision_reason,
+        r.doctor_decision_at,
         r.urgency,
         r.region,
         r.district,
@@ -64,6 +68,7 @@ $query = "
         p.last_name AS patient_last_name,
         u.first_name AS co_first_name,
         u.last_name AS co_last_name,
+        u.email AS co_email,
         u.phone AS co_phone,
         f1.name AS referring_facility,
         f2.name AS receiving_facility

@@ -399,7 +399,7 @@ export default function Dashboard() {
       fetchFeedback();
     }
 
-    if (activeTab === 'feedback' && referrals.length === 0 && ['co', 'receptionist'].includes(summary?.user?.role)) {
+    if (activeTab === 'feedback' && ['co', 'receptionist'].includes(summary?.user?.role)) {
       fetchReferrals();
     }
 
@@ -814,6 +814,26 @@ export default function Dashboard() {
   const notificationConversations = notifications.filter(
     (item) => item.sender_user_id || item.recipient_user_id || item.reply_to_notification_id,
   );
+  const eligibleFeedbackReferrals = referrals.filter(
+    (ref) => summary?.user?.role === 'co'
+      && Number(ref.assigned_doctor_user_id) === Number(summary?.user?.id)
+      && (ref.status === 'accepted' || (ref.status === 'pending' && ref.doctor_decision === 'accepted')),
+  );
+  const selectedFeedbackReferral = eligibleFeedbackReferrals.find(
+    (ref) => Number(ref.id) === Number(feedbackForm.referral_id),
+  );
+  const getDisplayStatus = (referral) => {
+    if (referral.status === 'pending' && referral.doctor_decision === 'rejected') {
+      return 'rejected';
+    }
+    if (referral.status === 'pending' && referral.doctor_decision === 'accepted') {
+      return 'accepted';
+    }
+    return referral.status;
+  };
+  const getStatusReason = (referral) => (
+    referral.rejection_reason || referral.doctor_decision_reason || ''
+  );
 
   return (
     <main className="container dashboard-page">
@@ -1115,7 +1135,6 @@ export default function Dashboard() {
                           <td>{item.id}</td>
                           <td>{item.patient_name}</td>
                           <td className="referral-summary-cell">
-                            <p>{item.clinical_reason || 'No condition details recorded.'}</p>
                             <button
                               type="button"
                               className="table-icon-button"
@@ -1126,8 +1145,11 @@ export default function Dashboard() {
                             </button>
                           </td>
                           <td>{item.urgency}</td>
-                          <td className={`status-pill status-${item.status}`}>
-                            {item.status}
+                          <td className={`status-pill status-${getDisplayStatus(item)}`}>
+                            {getDisplayStatus(item)}
+                            {getDisplayStatus(item) === 'rejected' && getStatusReason(item) && (
+                              <span className="status-note">Reason: {getStatusReason(item)}</span>
+                            )}
                           </td>
                           <td>
                             <span className="facility-route">
@@ -1140,20 +1162,16 @@ export default function Dashboard() {
                           <td>
                             {summary?.user?.role === 'receptionist' && (
                               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                {item.status === 'pending' && (
+                                {item.status === 'pending' && item.doctor_decision === 'accepted' && (
                                   <>
-                                    <button className="button" disabled={actionProcessing === item.id} onClick={() => updateReferralStatus(item.id, 'accepted')}>Accept</button>
-                                    <button className="button button-secondary" disabled={actionProcessing === item.id} onClick={() => {
-                                      const reason = window.prompt('Rejection reason (optional):');
-                                      updateReferralStatus(item.id, 'rejected');
-                                    }}>Reject</button>
+                                    <button className="button" disabled={actionProcessing === item.id} onClick={() => updateReferralStatus(item.id, 'accepted')}>Confirm Acceptance</button>
                                   </>
                                 )}
-                                {item.status === 'accepted' && (
-                                  <button className="button" disabled={actionProcessing === item.id} onClick={() => updateReferralStatus(item.id, 'in_progress')}>Start</button>
+                                {item.status === 'pending' && item.doctor_decision === 'rejected' && (
+                                  <button className="button button-secondary" disabled={actionProcessing === item.id} onClick={() => updateReferralStatus(item.id, 'rejected')}>Confirm Rejection</button>
                                 )}
-                                {item.status === 'in_progress' && (
-                                  <button className="button" disabled={actionProcessing === item.id} onClick={() => updateReferralStatus(item.id, 'completed')}>Complete</button>
+                                {item.status === 'pending' && item.doctor_decision === 'pending' && (
+                                  <span className="field-hint">Awaiting doctor decision</span>
                                 )}
                               </div>
                             )}
@@ -1255,27 +1273,55 @@ export default function Dashboard() {
             <p className="dashboard-message dashboard-error">{sectionErrors.feedback}</p>
           ) : (
             <div className="grid-card feedback-grid">
-              {['co', 'receptionist'].includes(summary?.user?.role) && (
+              {summary?.user?.role === 'co' && (
                 <div className="feedback-card" style={{ marginBottom: '1.5rem' }}>
-                  <h3>Feedback Conversation</h3>
+                  <h3>Submit Referral Feedback</h3>
                   <form onSubmit={submitFeedback}>
                     <div className="form-field">
                       <span>Referral</span>
                       <select
                         name="referral_id"
                         value={feedbackForm.referral_id}
-                        onChange={(e) => setFeedbackForm((prev) => ({ ...prev, referral_id: e.target.value }))}
+                        onChange={(e) => {
+                          const selected = eligibleFeedbackReferrals.find((ref) => Number(ref.id) === Number(e.target.value));
+                          setFeedbackForm((prev) => ({
+                            ...prev,
+                            referral_id: e.target.value,
+                            department: selected?.receiving_department || '',
+                            referral_serial_no: selected?.referral_number || (selected ? `REF-${selected.id}` : ''),
+                            referral_diagnosis: selected?.diagnosis || selected?.clinical_reason || '',
+                          }));
+                        }}
                         className="form-input"
                         required
                       >
-                        <option value="">Select a referral</option>
-                        {referrals.map((ref) => (
+                        <option value="">
+                          {eligibleFeedbackReferrals.length === 0 ? 'No doctor-accepted assigned referrals available' : 'Select a referral'}
+                        </option>
+                        {eligibleFeedbackReferrals.map((ref) => (
                           <option key={ref.id} value={ref.id}>
-                            #{ref.id} - {ref.patient_name} to {ref.receiving_facility} ({ref.status})
+                            #{ref.id} - {ref.patient_name} from {ref.referring_facility}
                           </option>
                         ))}
                       </select>
                     </div>
+                    {selectedFeedbackReferral && (
+                      <div className="feedback-recipient-panel">
+                        <div>
+                          <span>Patient</span>
+                          <strong>{selectedFeedbackReferral.patient_name}</strong>
+                        </div>
+                        <div>
+                          <span>Feedback recipient</span>
+                          <strong>{selectedFeedbackReferral.referring_co}</strong>
+                          <p>{selectedFeedbackReferral.co_email || 'Email not available'}</p>
+                        </div>
+                        <div>
+                          <span>Hospital receiving feedback</span>
+                          <strong>{selectedFeedbackReferral.referring_facility}</strong>
+                        </div>
+                      </div>
+                    )}
                     <div className="form-field">
                       <span>Clinical outcome</span>
                       <textarea
@@ -1580,7 +1626,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                       )}
-                      {item.can_reply && (
+                      {item.can_reply && !item.can_decide_referral && (
                         <div className="notification-reply">
                           {replyingNotificationId === item.id ? (
                             <form onSubmit={sendNotificationReply} className="login-form">
@@ -1675,8 +1721,11 @@ export default function Dashboard() {
             <div className="modal-meta-grid">
               <div>
                 <span>Status</span>
-                <strong className={`status-pill status-${selectedReferral.status}`}>
-                  {selectedReferral.status}
+                <strong className={`status-pill status-${getDisplayStatus(selectedReferral)}`}>
+                  {getDisplayStatus(selectedReferral)}
+                  {getDisplayStatus(selectedReferral) === 'rejected' && getStatusReason(selectedReferral) && (
+                    <span className="status-note">Reason: {getStatusReason(selectedReferral)}</span>
+                  )}
                 </strong>
               </div>
               <div>

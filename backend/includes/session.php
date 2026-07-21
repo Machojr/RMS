@@ -23,6 +23,7 @@ function getCurrentUser() {
     if (!isLoggedIn()) {
         return null;
     }
+    
 
     return [
         'id' => $_SESSION['user_id'],

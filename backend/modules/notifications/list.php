@@ -31,9 +31,17 @@ $query = "
         n.sent_at,
         n.status,
         n.error_message,
+        n.is_read,
+        n.read_at,
+        n.action_type,
+        n.referral_number AS notification_referral_number,
+        n.patient_name AS notification_patient_name,
+        n.quick_action_link,
         r.id AS referral_id,
         r.status AS referral_status,
         r.rejection_reason,
+        r.doctor_decision,
+        r.doctor_decision_reason,
         doc.user_id AS assigned_doctor_user_id,
         p.first_name AS patient_first_name,
         p.last_name AS patient_last_name,
@@ -71,12 +79,12 @@ while ($row = $result->fetch_assoc()) {
     $row['patient_name'] = trim($row['patient_first_name'] . ' ' . $row['patient_last_name']);
     $row['sender_name'] = trim(($row['sender_first_name'] ?? '') . ' ' . ($row['sender_last_name'] ?? ''));
     $row['recipient_name'] = trim(($row['recipient_first_name'] ?? '') . ' ' . ($row['recipient_last_name'] ?? ''));
-    $row['can_reply'] = ((int)$row['recipient_user_id'] === (int)$user['id'])
-        || ((int)$row['sender_user_id'] === (int)$user['id'])
-        || ($user['role'] === 'receptionist');
     $row['can_decide_referral'] = ((int)$row['recipient_user_id'] === (int)$user['id'])
         && ((int)$row['assigned_doctor_user_id'] === (int)$user['id'])
-        && in_array($row['referral_status'], ['pending', 'in_progress'], true);
+        && $row['referral_status'] === 'pending'
+        && $row['doctor_decision'] === 'pending';
+    $row['can_reply'] = $user['role'] === 'receptionist'
+        && (((int)$row['recipient_user_id'] === (int)$user['id']) || ((int)$row['sender_user_id'] === (int)$user['id']));
     unset($row['patient_first_name'], $row['patient_last_name'], $row['sender_first_name'], $row['sender_last_name'], $row['recipient_first_name'], $row['recipient_last_name']);
     $notifications[] = $row;
 }

@@ -7,6 +7,7 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once dirname(__DIR__, 2) . '/includes/session.php';
 require_once dirname(__DIR__, 2) . '/includes/notifications.php';
+require_once dirname(__DIR__, 2) . '/includes/audit.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     sendError('Method not allowed', 405);
@@ -35,28 +36,36 @@ $dischargeSummary = trim($input['discharge_summary'] ?? '');
 $followUpInstructions = trim($input['follow_up_instructions'] ?? '');
 
 $user = getCurrentUser();
-if (!in_array($user['role'], ['co', 'receptionist', 'moh'], true)) {
-    sendError('Only CO, Receptionist or MoH can submit feedback', 403);
+if ($user['role'] !== 'co' && $user['role'] !== 'moh') {
+    sendError('Only receiving doctors/COs can submit feedback', 403);
 }
 
-if ($user['role'] === 'receptionist') {
-    $stmt = $conn->prepare('SELECT id FROM referrals WHERE id = ? AND receiving_facility_id = ?');
-    $stmt->bind_param('ii', $referralId, $user['facility_id']);
-} elseif ($user['role'] === 'co') {
-    $stmt = $conn->prepare('SELECT id FROM referrals WHERE id = ? AND referring_co_id = ?');
-    $stmt->bind_param('ii', $referralId, $user['id']);
+$accessStmt = $conn->prepare(
+    'SELECT r.id
+     FROM referrals r
+     JOIN doctors doc ON r.assigned_doctor_id = doc.id
+     WHERE r.id = ?
+       AND (r.status = "accepted" OR (r.status = "pending" AND r.doctor_decision = "accepted"))
+       AND doc.user_id = ?'
+);
+if ($user['role'] === 'co') {
+    $stmt = $accessStmt;
 } else {
     $stmt = $conn->prepare('SELECT id FROM referrals WHERE id = ?');
-    $stmt->bind_param('i', $referralId);
 }
 
 if (!$stmt) {
     sendError('Database error preparing referral access check', 500);
 }
+if ($user['role'] === 'co') {
+    $stmt->bind_param('ii', $referralId, $user['id']);
+} else {
+    $stmt->bind_param('i', $referralId);
+}
 $stmt->execute();
 $result = $stmt->get_result();
 if ($result->num_rows === 0) {
-    sendError('Referral not found or access denied', 403);
+    sendError('Referral not found, not accepted by doctor, or not assigned to this doctor', 403);
 }
 $stmt->close();
 
@@ -89,6 +98,22 @@ if (!$stmt->execute()) {
 }
 $stmt->close();
 
+$completeStmt = $conn->prepare(
+    'UPDATE referrals
+     SET status = "completed", completed_at = NOW()
+     WHERE id = ?
+       AND (status = "accepted" OR (status = "pending" AND doctor_decision = "accepted"))'
+);
+if (!$completeStmt) {
+    sendError('Database error preparing referral completion', 500);
+}
+$completeStmt->bind_param('i', $referralId);
+if (!$completeStmt->execute()) {
+    sendError('Feedback saved, but referral completion failed', 500);
+}
+$completed = $completeStmt->affected_rows > 0;
+$completeStmt->close();
+
 $detailStmt = $conn->prepare(
     'SELECT
         p.first_name AS patient_first_name,
@@ -118,32 +143,29 @@ $detailStmt->close();
 $patientName = $detail ? trim($detail['patient_first_name'] . ' ' . $detail['patient_last_name']) : '';
 $senderName = trim($user['first_name'] . ' ' . $user['last_name']);
 if ($detail && $user['role'] === 'receptionist') {
+    // Receptionists no longer submit clinical feedback.
+} elseif ($detail && !empty($detail['referrer_email'])) {
     createNotification(
         $conn,
         $referralId,
         $detail['referrer_email'],
         $detail['referrer_phone'],
         'Feedback message received',
-        "Feedback message from {$senderName} for referral #{$referralId} ({$patientName}).\n\n{$clinicalOutcome}",
+        "Feedback from {$senderName} for referral #{$referralId} ({$patientName}).\n\n"
+            . "Clinical outcome: {$clinicalOutcome}\n"
+            . "Treatment: {$treatmentGiven}\n"
+            . "Follow-up: {$followUpInstructions}\n"
+            . "Comments: {$comments}",
         'email',
         'pending',
         $user['id'],
         (int)$detail['referrer_user_id']
     );
-} elseif ($detail && $user['role'] === 'co' && !empty($detail['receptionist_email'])) {
-    createNotification(
-        $conn,
-        $referralId,
-        $detail['receptionist_email'],
-        $detail['receptionist_phone'],
-        'Feedback message received',
-        "Feedback message from {$senderName} for referral #{$referralId} ({$patientName}).\n\n{$clinicalOutcome}",
-        'email',
-        'pending',
-        $user['id'],
-        (int)$detail['receptionist_user_id']
-    );
 }
 
-sendResponse(['success' => true, 'message' => 'Feedback submitted successfully']);
+if ($completed) {
+    logAudit($conn, $user, 'feedback_submitted_referral_completed', $referralId, 'accepted', 'completed', 'Referral completed automatically after doctor feedback');
+}
+
+sendResponse(['success' => true, 'message' => 'Feedback submitted successfully and referral marked completed']);
 ?>

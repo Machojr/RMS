@@ -46,13 +46,13 @@ if ($user['role'] === 'moh') {
     $query .= " ORDER BY fb.sent_at DESC";
     $stmt = $conn->prepare($query);
 } elseif ($user['role'] === 'receptionist') {
-    $query .= " WHERE r.referring_facility_id = ? OR r.receiving_facility_id = ? ORDER BY fb.sent_at DESC";
+    $query .= " WHERE r.receiving_facility_id = ? ORDER BY fb.sent_at DESC";
     $stmt = $conn->prepare($query);
-    $stmt->bind_param('ii', $user['facility_id'], $user['facility_id']);
+    $stmt->bind_param('i', $user['facility_id']);
 } else {
-    $query .= " WHERE r.referring_co_id = ? ORDER BY fb.sent_at DESC";
+    $query .= " WHERE r.referring_co_id = ? OR fb.sent_by_receptionist_id = ? ORDER BY fb.sent_at DESC";
     $stmt = $conn->prepare($query);
-    $stmt->bind_param('i', $user['id']);
+    $stmt->bind_param('ii', $user['id'], $user['id']);
 }
 
 $stmt->execute();

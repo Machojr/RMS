@@ -24,7 +24,7 @@ $usersCount = 0;
 $pendingCount = 0;
 
 // Referral counts depend on user role
-if ($user['role'] === 'moh') {
+if ($user['role'] === 'admin' || $user['role'] === 'moh') {
     $referralSql = "SELECT COUNT(*) AS total, SUM(status = 'pending') AS pending FROM referrals";
     $refFacilitySql = "SELECT COUNT(*) AS total FROM facilities";
     $userSql = "SELECT COUNT(*) AS total FROM users WHERE is_active = TRUE";

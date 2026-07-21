@@ -49,7 +49,9 @@ $user = $result->fetch_assoc();
 
 // Verify password. Support modern hashed passwords and older seeded plain-text accounts.
 $storedPassword = $user['password'];
-$passwordMatches = password_get_info($storedPassword)['algo'] !== 0
+$passwordInfo = password_get_info($storedPassword);
+$hasPasswordHash = !empty($passwordInfo['algo']) && $passwordInfo['algoName'] !== 'unknown';
+$passwordMatches = $hasPasswordHash
     ? password_verify($password, $storedPassword)
     : hash_equals($storedPassword, $password);
 

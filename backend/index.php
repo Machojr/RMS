@@ -98,8 +98,16 @@ try {
             require_once __DIR__ . '/modules/doctors/' . $path_segments[1] . '.php';
             break;
 
+        case 'users':
+            require_once __DIR__ . '/modules/users/' . $path_segments[1] . '.php';
+            break;
+
         case 'communications':
             require_once __DIR__ . '/modules/communications/' . $path_segments[1] . '.php';
+            break;
+
+        case 'treatment_reports':
+            require_once __DIR__ . '/modules/treatment_reports/' . $path_segments[1] . '.php';
             break;
 
         default:
