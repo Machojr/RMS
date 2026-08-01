@@ -36,7 +36,7 @@ $dischargeSummary = trim($input['discharge_summary'] ?? '');
 $followUpInstructions = trim($input['follow_up_instructions'] ?? '');
 
 $user = getCurrentUser();
-if ($user['role'] !== 'co' && $user['role'] !== 'moh') {
+if ($user['role'] !== 'co' && !in_array($user['role'], ['admin', 'super_admin'], true)) {
     sendError('Only receiving doctors/COs can submit feedback', 403);
 }
 

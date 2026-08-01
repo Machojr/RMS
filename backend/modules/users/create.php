@@ -17,7 +17,7 @@ if (!isLoggedIn()) {
 }
 
 $admin = getCurrentUser();
-if ($admin['role'] !== 'admin') {
+if (!in_array($admin['role'], ['admin', 'super_admin'], true)) {
     sendError('Only admin can create users', 403);
 }
 
@@ -43,7 +43,11 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     sendError('Invalid email format', 400);
 }
 
-if (!in_array($role, ['admin', 'co', 'receptionist', 'moh'], true)) {
+if ($role === 'super_admin') {
+    $role = 'admin';
+}
+
+if (!in_array($role, ['admin', 'co', 'receptionist'], true)) {
     sendError('Invalid role selected', 400);
 }
 

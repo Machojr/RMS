@@ -42,7 +42,7 @@ $query = "
     JOIN users u ON fb.sent_by_receptionist_id = u.id
 ";
 
-if ($user['role'] === 'moh') {
+if (in_array($user['role'], ['admin', 'super_admin'], true)) {
     $query .= " ORDER BY fb.sent_at DESC";
     $stmt = $conn->prepare($query);
 } elseif ($user['role'] === 'receptionist') {

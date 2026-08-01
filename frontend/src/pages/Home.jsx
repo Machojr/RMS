@@ -10,7 +10,7 @@ const features = [
   },
   {
     title: 'Role-Based Dashboards',
-    description: 'COs, facility admins, and MOH officials each see the data and actions that matter to them.',
+    description: 'COs, receptionists, and system admins each see the data and actions that matter to them.',
   },
   {
     title: 'Real-Time Notification Engine',
@@ -39,8 +39,8 @@ const roles = [
     description: 'Coordinate incoming referrals, liaise with receiving clinicians, and manage local referral workflow.',
   },
   {
-    title: 'MOH Official',
-    description: 'Monitor national referral performance, facility coverage, and health system outcomes.',
+    title: 'System Admin',
+    description: 'Manage users and monitor national referral performance, facility coverage, and health system outcomes.',
   },
 ];
 

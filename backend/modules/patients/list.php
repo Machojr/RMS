@@ -34,7 +34,7 @@ $query = "
     LEFT JOIN referrals r ON p.id = r.patient_id
 ";
 
-if ($user['role'] === 'moh') {
+if (in_array($user['role'], ['admin', 'super_admin'], true)) {
     $query .= "
         GROUP BY p.id
         ORDER BY p.created_at DESC

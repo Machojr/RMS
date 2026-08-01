@@ -59,7 +59,7 @@ $query = "
 
 $conversationOnly = " (n.sender_user_id IS NOT NULL OR n.recipient_user_id IS NOT NULL OR n.reply_to_notification_id IS NOT NULL)";
 
-if ($user['role'] === 'moh') {
+if (in_array($user['role'], ['admin', 'super_admin'], true)) {
     $query .= " WHERE" . $conversationOnly . " ORDER BY n.sent_at DESC";
     $stmt = $conn->prepare($query);
 } elseif ($user['role'] === 'receptionist') {

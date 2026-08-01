@@ -102,6 +102,10 @@ try {
             require_once __DIR__ . '/modules/users/' . $path_segments[1] . '.php';
             break;
 
+        case 'admin':
+            require_once __DIR__ . '/modules/admin/' . $path_segments[1] . '.php';
+            break;
+
         case 'communications':
             require_once __DIR__ . '/modules/communications/' . $path_segments[1] . '.php';
             break;

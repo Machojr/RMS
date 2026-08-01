@@ -31,7 +31,7 @@ $query = '
     JOIN users sender ON tr.submitted_by_user_id = sender.id
 ';
 
-if ($user['role'] === 'moh') {
+if (in_array($user['role'], ['admin', 'super_admin'], true)) {
     $query .= ' ORDER BY tr.created_at DESC';
     $stmt = $conn->prepare($query);
 } elseif ($user['role'] === 'receptionist') {

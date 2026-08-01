@@ -69,8 +69,8 @@ if ($user['role'] === 'receptionist') {
     if ((int)$detail['receiving_facility_id'] !== (int)$user['facility_id']) {
         sendError('Access denied', 403);
     }
-} elseif ($user['role'] !== 'moh') {
-    sendError('Only Receptionist or MoH can confirm referral status', 403);
+} elseif (!in_array($user['role'], ['admin', 'super_admin'], true)) {
+    sendError('Only Receptionist or Admin can confirm referral status', 403);
 }
 
 if ($detail['status'] !== 'pending') {

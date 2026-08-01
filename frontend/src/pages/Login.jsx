@@ -26,7 +26,13 @@ export default function Login() {
 
       if (response.ok && data.success) {
         setMessage('Login successful. Redirecting...');
-        window.location.href = '/dashboard-landing';
+        // Redirect kulingana na role ya user
+        const role = data.user?.role;
+        if (role === 'admin' || role === 'super_admin') {
+          window.location.href = '/admin';
+        } else {
+          window.location.href = '/dashboard-landing';
+        }
       } else {
         setMessage(data.message || 'Login failed. Please try again.');
       }
@@ -50,7 +56,7 @@ export default function Login() {
             <span className="badge">Referral network platform</span>
             <h3>Streamline patient referrals with confidence.</h3>
             <p>
-              Log in to access referrals, facility updates, and MOH oversight tools in a modern, secure interface designed for Tanzanian public healthcare.
+              Log in to access referrals, facility updates, and admin oversight tools in a modern, secure interface designed for Tanzanian public healthcare.
             </p>
 
             <div className="login-stats">

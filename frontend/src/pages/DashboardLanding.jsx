@@ -15,25 +15,26 @@ const modulesAvailable = {
     { title: 'Feedback', desc: 'Monitor clinical feedback', path: '/dashboard?tab=feedback', iconClass: 'fa-solid fa-notes-medical' },
     { title: 'Notifications', desc: 'Communication audit logs', path: '/dashboard?tab=notifications', iconClass: 'fa-solid fa-bell' },
   ],
-  moh: [
-    { title: 'Referrals', desc: 'National referral oversight', path: '/dashboard?tab=referrals', iconClass: 'fa-solid fa-file-medical' },
-    { title: 'Patients', desc: 'View patient records across referral activity', path: '/dashboard?tab=patients', iconClass: 'fa-solid fa-user-injured' },
-    { title: 'Facilities', desc: 'All-nation facility data', path: '/dashboard?tab=facilities', iconClass: 'fa-solid fa-hospital' },
-    { title: 'Feedback', desc: 'Aggregate clinical outcomes', path: '/dashboard?tab=feedback', iconClass: 'fa-solid fa-notes-medical' },
-    { title: 'Notifications', desc: 'System-wide communications', path: '/dashboard?tab=notifications', iconClass: 'fa-solid fa-bell' },
+  admin: [
+    { title: 'Admin Dashboard', desc: 'Manage users, facilities, and referral oversight', path: '/admin', iconClass: 'fa-solid fa-user-shield' },
+  ],
+  super_admin: [
+    { title: 'Admin Dashboard', desc: 'Manage users, facilities, and referral oversight', path: '/admin', iconClass: 'fa-solid fa-user-shield' },
   ],
 };
 
 const roleDescriptions = {
   co: 'As a CO, you submit patient referrals, monitor referral progress, and review clinical feedback from receiving facilities.',
   receptionist: 'As a Receptionist, you coordinate incoming referrals for your facility, liaise with department clinicians, and record clinical feedback when available.',
-  moh: 'As a Ministry of Health official, you monitor referrals at the national level and track facility performance across regions.',
+  admin: 'As System Admin, you manage users and monitor referral performance across facilities.',
+  super_admin: 'As System Admin, you manage users and monitor referral performance across facilities.',
 };
 
 const roleLabels = {
   co: 'CO',
   receptionist: 'Receptionist',
-  moh: 'MOH Official',
+  admin: 'System Admin',
+  super_admin: 'System Admin',
 };
 
 export default function DashboardLanding() {

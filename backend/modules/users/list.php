@@ -16,7 +16,7 @@ if (!isLoggedIn()) {
 }
 
 $user = getCurrentUser();
-if ($user['role'] !== 'admin') {
+if (!in_array($user['role'], ['admin', 'super_admin'], true)) {
     sendError('Only admin can manage users', 403);
 }
 
@@ -24,7 +24,7 @@ $query = "
     SELECT
         u.id,
         u.email,
-        u.role,
+        CASE WHEN u.role = 'super_admin' THEN 'admin' ELSE u.role END AS role,
         u.first_name,
         u.last_name,
         u.phone,

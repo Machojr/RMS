@@ -81,8 +81,8 @@ function canAccessReferral($referral_id, $conn) {
         return $result->num_rows > 0;
     }
 
-    // MOH can access all referrals
-    return $user['role'] === 'moh';
+    // Admin can access all referrals for oversight/reporting.
+    return in_array($user['role'], ['admin', 'super_admin'], true);
 }
 
 /**
